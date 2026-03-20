@@ -1,0 +1,40 @@
+# Build outputs
+bin/
+obj/
+out/
+publish/
+
+# User and IDE files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Test and coverage
+TestResults/
+coverage/
+coverage.*
+*.coverage
+*.coveragexml
+
+# Local app data and secrets
+appsettings.Development.local.json
+appsettings.Local.json
+*.local.json
+
+# SQLite and generated local databases
+*.db
+*.db-shm
+*.db-wal
+
+# OS files
+Thumbs.db
+Desktop.ini
