@@ -1,0 +1,102 @@
+using System;
+using BettingApp.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
+#nullable disable
+
+namespace BettingApp.Infrastructure.Migrations;
+
+[DbContext(typeof(BettingDbContext))]
+partial class BettingDbContextModelSnapshot : ModelSnapshot
+{
+    protected override void BuildModel(ModelBuilder modelBuilder)
+    {
+#pragma warning disable 612, 618
+        modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
+
+        modelBuilder.Entity("BettingApp.Domain.Entities.Bet", b =>
+        {
+            b.Property<Guid>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("TEXT");
+
+            b.Property<Guid>("BettorId")
+                .HasColumnType("TEXT");
+
+            b.Property<string>("EventName")
+                .IsRequired()
+                .HasMaxLength(200)
+                .HasColumnType("TEXT");
+
+            b.Property<bool>("IsCommissionFeePaid")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("INTEGER")
+                .HasDefaultValue(false);
+
+            b.Property<bool>("IsWinning")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("INTEGER")
+                .HasDefaultValue(false);
+
+            b.Property<int>("OutcomeStatus")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("INTEGER")
+                .HasDefaultValue(0);
+
+            b.Property<decimal>("Odds")
+                .HasPrecision(10, 2)
+                .HasColumnType("TEXT");
+
+            b.Property<DateTime>("PlacedAtUtc")
+                .HasColumnType("TEXT");
+
+            b.Property<decimal>("Stake")
+                .HasPrecision(10, 2)
+                .HasColumnType("TEXT");
+
+            b.HasKey("Id");
+
+            b.HasIndex("BettorId");
+
+            b.ToTable("Bets");
+        });
+
+        modelBuilder.Entity("BettingApp.Domain.Entities.Bettor", b =>
+        {
+            b.Property<Guid>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("TEXT");
+
+            b.Property<string>("Name")
+                .IsRequired()
+                .HasMaxLength(120)
+                .HasColumnType("TEXT");
+
+            b.HasKey("Id");
+
+            b.HasIndex("Name")
+                .IsUnique();
+
+            b.ToTable("Bettors");
+        });
+
+        modelBuilder.Entity("BettingApp.Domain.Entities.Bet", b =>
+        {
+            b.HasOne("BettingApp.Domain.Entities.Bettor", "Bettor")
+                .WithMany("Bets")
+                .HasForeignKey("BettorId")
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
+
+            b.Navigation("Bettor");
+        });
+
+        modelBuilder.Entity("BettingApp.Domain.Entities.Bettor", b =>
+        {
+            b.Navigation("Bets");
+        });
+#pragma warning restore 612, 618
+    }
+}

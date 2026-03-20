@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BettingApp.Application/BettingApp.Application.csproj" />
+    <Project Path="src/BettingApp.Domain/BettingApp.Domain.csproj" />
+    <Project Path="src/BettingApp.Infrastructure/BettingApp.Infrastructure.csproj" />
+    <Project Path="src/BettingApp.Server/BettingApp.Server.csproj" />
+    <Project Path="src/BettingApp.Wpf/BettingApp.Wpf.csproj" />
+  </Folder>
+</Solution>

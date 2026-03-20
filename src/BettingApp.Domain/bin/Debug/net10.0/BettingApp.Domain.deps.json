@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "BettingApp.Domain/1.0.0": {
+        "runtime": {
+          "BettingApp.Domain.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "BettingApp.Domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

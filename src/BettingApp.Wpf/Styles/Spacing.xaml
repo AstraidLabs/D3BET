@@ -1,0 +1,16 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Thickness x:Key="PageMargin">28</Thickness>
+    <Thickness x:Key="SectionTopMargin">0,22,0,0</Thickness>
+    <Thickness x:Key="GridGapRight">0,0,18,0</Thickness>
+    <Thickness x:Key="LabelMargin">0,0,0,8</Thickness>
+    <Thickness x:Key="FieldBottomMargin">0,0,0,18</Thickness>
+    <Thickness x:Key="FieldBottomLargeMargin">0,0,0,22</Thickness>
+    <Thickness x:Key="InlineFieldLeftMargin">12,0,0,18</Thickness>
+    <Thickness x:Key="InlineLabelLeftMargin">12,0,0,8</Thickness>
+    <Thickness x:Key="InlineLabelRightMargin">0,0,12,8</Thickness>
+    <Thickness x:Key="InlineFieldRightMargin">0,0,12,18</Thickness>
+    <Thickness x:Key="ButtonGapMargin">0,0,12,0</Thickness>
+    <Thickness x:Key="StatusMargin">0,18,0,18</Thickness>
+    <Thickness x:Key="TicketItemMargin">0,0,0,14</Thickness>
+</ResourceDictionary>

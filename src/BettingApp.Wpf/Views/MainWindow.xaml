@@ -1,0 +1,1050 @@
+<Window x:Class="BettingApp.Wpf.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="D3Bet"
+        Height="760"
+        Width="1240"
+        MinHeight="680"
+        MinWidth="1080"
+        Background="#08111F"
+        Opacity="0">
+    <Window.Resources>
+        <LinearGradientBrush x:Key="WindowBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#08111F" Offset="0" />
+            <GradientStop Color="#0D1B31" Offset="0.55" />
+            <GradientStop Color="#132847" Offset="1" />
+        </LinearGradientBrush>
+        <SolidColorBrush x:Key="PanelBrush" Color="#F10F172A" />
+        <SolidColorBrush x:Key="PanelBorderBrush" Color="#33E2E8F0" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#F97316" />
+        <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F8FAFC" />
+        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#A7B6CA" />
+        <SolidColorBrush x:Key="SuccessBrush" Color="#22C55E" />
+        <SolidColorBrush x:Key="WarningBrush" Color="#FBBF24" />
+        <SolidColorBrush x:Key="MutedBadgeBrush" Color="#334155" />
+        <SolidColorBrush x:Key="WinningBadgeBrush" Color="#14532D" />
+        <SolidColorBrush x:Key="OddsBadgeBrush" Color="#3A7C2D12" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#0F172A" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#F8FAFC" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#0F172A" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#F8FAFC" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#F97316" />
+        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF" />
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="24" />
+            <Setter Property="Padding" Value="20" />
+        </Style>
+
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+        </Style>
+
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+        </Style>
+
+        <Style x:Key="InputStyle" TargetType="Control">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Background" Value="#C40C1626" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="#3AF8FAFC" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <Style x:Key="TextBoxStyleLocal" TargetType="TextBox">
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Background" Value="#C40C1626" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="#3AF8FAFC" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <Style x:Key="ComboBoxItemStyleLocal" TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#0F172A" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="#1E293B" />
+                    <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#F97316" />
+                    <Setter Property="Foreground" Value="White" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ComboBoxStyleLocal" TargetType="ComboBox">
+            <Style.Resources>
+                <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#0F172A" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#F8FAFC" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#0F172A" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#F8FAFC" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#F97316" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF" />
+                <Style TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+                </Style>
+            </Style.Resources>
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Background" Value="#C40C1626" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="#3AF8FAFC" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource ComboBoxItemStyleLocal}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="ComboBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="40" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <ContentPresenter Grid.Column="0"
+                                                      x:Name="SelectionPresenter"
+                                                      Margin="12,0,8,0"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Left"
+                                                      RecognizesAccessKey="True"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                      ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                                                      TextElement.Foreground="{TemplateBinding Foreground}" />
+
+                                    <TextBlock Grid.Column="0"
+                                               x:Name="PlaceholderText"
+                                               Margin="12,0,8,0"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Left"
+                                               Foreground="#7C8AA0"
+                                               Text="{TemplateBinding Tag}"
+                                               Visibility="Collapsed" />
+
+                                    <ToggleButton Grid.Column="1"
+                                                  Focusable="False"
+                                                  ClickMode="Press"
+                                                  IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border Background="#122033"
+                                                        BorderBrush="#2234475E"
+                                                        BorderThickness="1,0,0,0"
+                                                        CornerRadius="0,8,8,0">
+                                                    <Path Width="10"
+                                                          Height="6"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          Data="M 0 0 L 5 6 L 10 0 Z"
+                                                          Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}" />
+                                                </Border>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
+
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   StaysOpen="False"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   PopupAnimation="Fade">
+                                <Border Margin="0,6,0,0"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        MaxHeight="320"
+                                        Background="#0F172A"
+                                        BorderBrush="#334155"
+                                        BorderThickness="1"
+                                        CornerRadius="10">
+                                    <ScrollViewer SnapsToDevicePixels="True">
+                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#55F97316" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#F97316" />
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#F97316" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#7C8AA0" />
+                                <Setter TargetName="ComboBorder" Property="Opacity" Value="0.65" />
+                            </Trigger>
+                            <Trigger Property="SelectedIndex" Value="-1">
+                                <Setter TargetName="PlaceholderText" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="SelectionPresenter" Property="Visibility" Value="Hidden" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CheckBoxStyleLocal" TargetType="CheckBox">
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="FontSize" Value="14" />
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyleLocal" TargetType="Button">
+            <Setter Property="Width" Value="160" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="ActionButtonPreviewMouseLeftButtonDown" />
+            <EventSetter Event="PreviewMouseLeftButtonUp" Handler="ActionButtonPreviewMouseLeftButtonUp" />
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyleLocal" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyleLocal}">
+            <Setter Property="Background" Value="#1E293B" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="#334155" />
+        </Style>
+
+        <Style x:Key="TicketActionButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="110" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Background" Value="#1E293B" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="#334155" />
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="ActionButtonPreviewMouseLeftButtonDown" />
+            <EventSetter Event="PreviewMouseLeftButtonUp" Handler="ActionButtonPreviewMouseLeftButtonUp" />
+        </Style>
+
+        <Style x:Key="TabControlStyleLocal" TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style x:Key="TabItemStyleLocal" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="18,10" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="Background" Value="#80111C2E" />
+            <Setter Property="BorderBrush" Value="#33E2E8F0" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <Style x:Key="KpiCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
+            <Setter Property="Padding" Value="18" />
+            <Setter Property="Margin" Value="0,0,12,12" />
+            <Setter Property="CornerRadius" Value="20" />
+        </Style>
+    </Window.Resources>
+
+    <Grid x:Name="RootContent" Background="{StaticResource WindowBrush}">
+        <Canvas IsHitTestVisible="False">
+            <Ellipse Width="340" Height="340" Canvas.Left="-90" Canvas.Top="-120" Fill="#22F97316" />
+            <Ellipse Width="240" Height="240" Canvas.Right="30" Canvas.Top="40" Fill="#1F38BDF8" />
+            <Ellipse Width="300" Height="300" Canvas.Left="780" Canvas.Top="490" Fill="#1822C55E" />
+        </Canvas>
+
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Style="{StaticResource CardStyle}" Padding="24,20" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel>
+                        <TextBlock FontSize="15" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Text="D3BET" />
+                        <TextBlock Margin="0,8,0,0" FontSize="32" FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" Text="Chytré řízení sázek v reálném čase" />
+                        <TextBlock Margin="0,10,0,0" FontSize="14" Foreground="{StaticResource SecondaryTextBrush}" Text="D3Bet spojuje přehled tiketů, živé statistiky a rychlou správu sázek do jednoho moderního rozhraní." />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Margin="0,0,10,0" Style="{StaticResource CardStyle}" Padding="14,10" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                            <StackPanel>
+                                <TextBlock Foreground="{StaticResource SecondaryTextBrush}" Text="Přihlášený provozovatel" />
+                                <TextBlock FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" Text="{Binding CurrentOperatorDisplayName}" />
+                                <TextBlock FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding CurrentOperatorRolesDisplay}" />
+                            </StackPanel>
+                        </Border>
+                        <Button Width="138"
+                                Height="42"
+                                Margin="0,0,10,0"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource SecondaryButtonStyleLocal}"
+                                MouseEnter="ActionButtonMouseEnter"
+                                MouseLeave="ActionButtonMouseLeave"
+                                Command="{Binding SwitchOperatorCommand}"
+                                Content="Přepnout účet" />
+                        <Border Margin="0,0,10,0" Style="{StaticResource CardStyle}" Padding="14,10" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                            <StackPanel>
+                                <TextBlock Foreground="{StaticResource SecondaryTextBrush}" Text="Živý provoz" />
+                                <TextBlock FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="Synchronizace aktivní" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource CardStyle}" Padding="14,10" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                            <StackPanel>
+                                <TextBlock Foreground="{StaticResource SecondaryTextBrush}" Text="Kurzový model" />
+                                <TextBlock FontWeight="SemiBold" Foreground="{StaticResource WarningBrush}" Text="Dynamické oceňování" />
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="10,0,0,0" Style="{StaticResource CardStyle}" Padding="14,10" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                            <StackPanel MaxWidth="280">
+                                <TextBlock Foreground="{StaticResource SecondaryTextBrush}" Text="Připojený server" />
+                                <TextBlock FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" Text="{Binding ConnectedServerName}" />
+                                <TextBlock FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding ConnectedServerDetail}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="0,18,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Border x:Name="StatusPanel"
+                        Margin="0,0,0,12"
+                        Padding="12"
+                        BorderBrush="#33E2E8F0"
+                        BorderThickness="1"
+                        CornerRadius="14"
+                        Background="#B30A1220">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal"
+                                    Margin="0,0,0,6"
+                                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Margin="0,0,8,0"
+                                       FontWeight="SemiBold"
+                                       Foreground="#38BDF8"
+                                       Text="Probíhá synchronizace" />
+                            <TextBlock Foreground="#93C5FD"
+                                       Text="{Binding BusyMessage}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <DockPanel LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left"
+                                       Width="Auto"
+                                       Foreground="#FDE68A"
+                                       Text="{Binding StatusMessage}"
+                                       TextWrapping="Wrap" />
+                            <Button DockPanel.Dock="Right"
+                                    Margin="16,0,0,0"
+                                    Padding="14,6"
+                                    Style="{StaticResource SecondaryActionButtonStyle}"
+                                    Visibility="{Binding HasRecoveryAction, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    Command="{Binding RecoveryActionCommand}"
+                                    Content="{Binding RecoveryActionLabel}" />
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+
+                <TabControl Grid.Row="1" Style="{StaticResource TabControlStyleLocal}">
+                    <TabItem Header="Dashboard" Style="{StaticResource TabItemStyleLocal}">
+                        <Border Margin="0,12,0,0" Style="{StaticResource CardStyle}" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <DockPanel LastChildFill="False">
+                                    <StackPanel DockPanel.Dock="Left">
+                                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Výkonnostní dashboard" />
+                                        <TextBlock Margin="0,4,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="Mějte po ruce klíčové metriky, trendy a výkon celé sázkové agendy." />
+                                        <TextBlock Margin="0,8,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding AnalyticsSummary}" />
+                                    </StackPanel>
+
+                                    <Button DockPanel.Dock="Right"
+                                            Style="{StaticResource SecondaryButtonStyleLocal}"
+                                            Margin="12,0,0,0"
+                                            MouseEnter="ActionButtonMouseEnter"
+                                            MouseLeave="ActionButtonMouseLeave"
+                                            Command="{Binding OpenCustomerDisplayCommand}"
+                                            Content="Zákaznická obrazovka" />
+
+                                    <Button DockPanel.Dock="Right"
+                                            Style="{StaticResource SecondaryButtonStyleLocal}"
+                                            Margin="12,0,0,0"
+                                            MouseEnter="ActionButtonMouseEnter"
+                                            MouseLeave="ActionButtonMouseLeave"
+                                            Command="{Binding RefreshCommand}"
+                                            Content="Obnovit" />
+                                </DockPanel>
+
+                                <ItemsControl Grid.Row="1"
+                                              Margin="0,18,0,0"
+                                              ItemsSource="{Binding DashboardKpis}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="5" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource KpiCardStyle}"
+                                                    MouseEnter="ElevatedCardMouseEnter"
+                                                    MouseLeave="ElevatedCardMouseLeave">
+                                                <StackPanel>
+                                                    <Border Width="36"
+                                                            Height="6"
+                                                            HorizontalAlignment="Left"
+                                                            CornerRadius="999"
+                                                            Background="{Binding AccentBrush}" />
+                                                    <TextBlock Margin="0,14,0,0"
+                                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                                               Text="{Binding Title}" />
+                                                    <TextBlock Margin="0,8,0,0"
+                                                               FontSize="28"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{StaticResource PrimaryTextBrush}"
+                                                               Text="{Binding Value}" />
+                                                    <TextBlock Margin="0,8,0,0"
+                                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                                               Text="{Binding Subtitle}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <Grid Grid.Row="2" Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Margin="0,0,12,0" Style="{StaticResource CardStyle}" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Nejaktivnější sázející" />
+                                            <TextBlock Margin="0,4,0,14" Foreground="{StaticResource SecondaryTextBrush}" Text="Okamžitě uvidíte, kdo přináší nejvyšší objem vkladů." />
+
+                                            <ItemsControl ItemsSource="{Binding TopBettors}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="0,0,0,12">
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="Auto" />
+                                                            </Grid.RowDefinitions>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <TextBlock Foreground="{StaticResource PrimaryTextBrush}" FontWeight="SemiBold" Text="{Binding Label}" />
+                                                            <TextBlock Grid.Column="1" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding Value}" />
+                                                            <Border Grid.Row="1"
+                                                                    Grid.ColumnSpan="2"
+                                                                    Height="10"
+                                                                    Margin="0,8,0,0"
+                                                                    Background="#1E293B"
+                                                                    CornerRadius="999">
+                                                                <Border Width="{Binding BarWidth}"
+                                                                        HorizontalAlignment="Left"
+                                                                        Background="{StaticResource AccentBrush}"
+                                                                        CornerRadius="999" />
+                                                            </Border>
+                                                            <TextBlock Grid.Row="1"
+                                                                       Grid.Column="1"
+                                                                       Margin="0,22,0,0"
+                                                                       HorizontalAlignment="Right"
+                                                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                                                       Text="{Binding Share}" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Column="1" Style="{StaticResource CardStyle}" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Nejžádanější příležitosti" />
+                                            <TextBlock Margin="0,4,0,14" Foreground="{StaticResource SecondaryTextBrush}" Text="Sledujte, které události přitahují největší pozornost a počet tiketů." />
+
+                                            <ItemsControl ItemsSource="{Binding EventDistribution}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="0,0,0,12">
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="Auto" />
+                                                            </Grid.RowDefinitions>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <TextBlock Foreground="{StaticResource PrimaryTextBrush}" FontWeight="SemiBold" Text="{Binding Label}" />
+                                                            <TextBlock Grid.Column="1" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding Value}" />
+                                                            <Border Grid.Row="1"
+                                                                    Grid.ColumnSpan="2"
+                                                                    Height="10"
+                                                                    Margin="0,8,0,0"
+                                                                    Background="#1E293B"
+                                                                    CornerRadius="999">
+                                                                <Border Width="{Binding BarWidth}"
+                                                                        HorizontalAlignment="Left"
+                                                                        Background="#38BDF8"
+                                                                        CornerRadius="999" />
+                                                            </Border>
+                                                            <TextBlock Grid.Row="1"
+                                                                       Grid.Column="1"
+                                                                       Margin="0,22,0,0"
+                                                                       HorizontalAlignment="Right"
+                                                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                                                       Text="{Binding Share}" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <Border Grid.Row="3"
+                                        Margin="0,18,0,0"
+                                        Style="{StaticResource CardStyle}"
+                                        MouseEnter="ElevatedCardMouseEnter"
+                                        MouseLeave="ElevatedCardMouseLeave">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Tempo příjmu sázek" />
+                                            <TextBlock Margin="0,4,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="Přehled posledních časových oken podle aktivity a počtu přijatých tiketů." />
+                                        </StackPanel>
+
+                                        <ItemsControl Grid.Row="1"
+                                                      Margin="0,20,0,0"
+                                                      ItemsSource="{Binding BetVolumeTrend}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="8" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Margin="0,0,12,0" VerticalAlignment="Bottom">
+                                                        <Grid Height="150" VerticalAlignment="Bottom">
+                                                            <Border Width="36"
+                                                                    Height="{Binding ColumnHeight}"
+                                                                    VerticalAlignment="Bottom"
+                                                                    HorizontalAlignment="Center"
+                                                                    Background="{StaticResource AccentBrush}"
+                                                                    CornerRadius="12,12,12,12" />
+                                                        </Grid>
+                                                        <TextBlock Margin="0,8,0,0"
+                                                                   HorizontalAlignment="Center"
+                                                                   Foreground="{StaticResource PrimaryTextBrush}"
+                                                                   FontWeight="SemiBold"
+                                                                   Text="{Binding Value}" />
+                                                        <TextBlock Margin="0,4,0,0"
+                                                                   HorizontalAlignment="Center"
+                                                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                                                   Text="{Binding Label}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Border>
+
+                            </Grid>
+                        </Border>
+                    </TabItem>
+
+                    <TabItem Header="Události"
+                             Style="{StaticResource TabItemStyleLocal}"
+                             Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Border Margin="0,12,0,0" Style="{StaticResource CardStyle}" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <DockPanel LastChildFill="False">
+                                    <StackPanel DockPanel.Dock="Left">
+                                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Vypsané události" />
+                                        <TextBlock Margin="0,4,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="Provozovatel zde zakládá události a výchozí kurzy. Tipař pak už vybírá jen událost a vklad." />
+                                    </StackPanel>
+
+                                    <Button DockPanel.Dock="Right"
+                                            Style="{StaticResource PrimaryButtonStyleLocal}"
+                                            Margin="12,0,0,0"
+                                            MouseEnter="ActionButtonMouseEnter"
+                                            MouseLeave="ActionButtonMouseLeave"
+                                            Command="{Binding OpenNewMarketEditorCommand}"
+                                            Content="Vypsat událost" />
+                                </DockPanel>
+
+                                <ListView Grid.Row="1"
+                                          Margin="0,18,0,0"
+                                          ItemsSource="{Binding Markets}"
+                                          Background="Transparent"
+                                          BorderThickness="0">
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem">
+                                            <Setter Property="Padding" Value="0" />
+                                            <Setter Property="Margin" Value="0,0,0,8" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="16"
+                                                    BorderBrush="#33E2E8F0"
+                                                    BorderThickness="1"
+                                                    CornerRadius="16"
+                                                    Background="#C00B1526">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" Text="{Binding EventName}" />
+                                                        <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                                                            <Border Padding="10,4" Background="#334155" CornerRadius="999">
+                                                                <TextBlock Foreground="#E2E8F0" FontWeight="SemiBold" Text="{Binding AvailabilityText}" />
+                                                            </Border>
+                                                            <Border Margin="8,0,0,0" Padding="10,4" Background="#102F855A" CornerRadius="999">
+                                                                <TextBlock Foreground="#86EFAC" FontWeight="SemiBold" Text="{Binding OpeningOddsDisplay, StringFormat=Výchozí kurz {0}}" />
+                                                            </Border>
+                                                            <Border Margin="8,0,0,0" Padding="10,4" Background="#3A7C2D12" CornerRadius="999">
+                                                                <TextBlock Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" Text="{Binding CurrentOddsDisplay, StringFormat=Aktuální kurz {0}}" />
+                                                            </Border>
+                                                        </StackPanel>
+                                                        <TextBlock Margin="0,10,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding CreatedAtDisplay, StringFormat=Vypsáno {0}}" />
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                        <Button Width="140"
+                                                                Style="{StaticResource SecondaryButtonStyleLocal}"
+                                                                Margin="0"
+                                                                MouseEnter="ActionButtonMouseEnter"
+                                                                MouseLeave="ActionButtonMouseLeave"
+                                                                Command="{Binding EditCommand}"
+                                                                CommandParameter="{Binding}"
+                                                                Visibility="{Binding DataContext.IsAdmin, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                Content="Upravit událost" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </Grid>
+                        </Border>
+                    </TabItem>
+
+                    <TabItem Header="Sázky" Style="{StaticResource TabItemStyleLocal}">
+                        <Border Margin="0,12,0,0" Style="{StaticResource CardStyle}" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <DockPanel LastChildFill="False">
+                                    <StackPanel DockPanel.Dock="Left">
+                                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Přehled přijatých sázek" />
+                                        <TextBlock Margin="0,4,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="Tipař vybírá vypsanou událost a zadává pouze vklad. Kurz se načítá automaticky podle trhu." />
+                                        <TextBlock Margin="0,6,0,0" Foreground="#94A3B8" Text="Dvojklik na tiket otevře samostatný editor pro rychlejší a přirozenější práci." />
+                                    </StackPanel>
+
+                                    <Button DockPanel.Dock="Right"
+                                            Style="{StaticResource PrimaryButtonStyleLocal}"
+                                            Margin="12,0,0,0"
+                                            MouseEnter="ActionButtonMouseEnter"
+                                            MouseLeave="ActionButtonMouseLeave"
+                                            Command="{Binding OpenNewBetEditorCommand}"
+                                            Content="Přijmout sázku" />
+
+                                    <Button DockPanel.Dock="Right"
+                                            Style="{StaticResource SecondaryButtonStyleLocal}"
+                                            Margin="12,0,0,0"
+                                            MouseEnter="ActionButtonMouseEnter"
+                                            MouseLeave="ActionButtonMouseLeave"
+                                            Command="{Binding RefreshCommand}"
+                                            Content="Obnovit" />
+                                </DockPanel>
+
+                                <Grid Grid.Row="1" Margin="0,18,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.3*" />
+                                        <ColumnDefinition Width="0.8*" />
+                                        <ColumnDefinition Width="0.9*" />
+                                        <ColumnDefinition Width="0.6*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Style="{StaticResource LabelStyle}" Text="Vyhledat událost nebo sázejícího" />
+                                        <TextBox Style="{StaticResource TextBoxStyleLocal}"
+                                                 GotFocus="InputGotFocus"
+                                                 LostFocus="InputLostFocus"
+                                                 Text="{Binding BetSearchText, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                        <TextBlock Style="{StaticResource LabelStyle}" Text="Stav tiketu" />
+                                        <ComboBox Style="{StaticResource ComboBoxStyleLocal}"
+                                                  GotFocus="InputGotFocus"
+                                                  LostFocus="InputLostFocus"
+                                                  Tag="Vyberte stav"
+                                                  ItemsSource="{Binding BetStatusFilters}"
+                                                  SelectedItem="{Binding SelectedBetStatusFilter}"
+                                                  DisplayMemberPath="Label" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" Margin="0,0,12,0">
+                                        <TextBlock Style="{StaticResource LabelStyle}" Text="Seřadit podle" />
+                                        <ComboBox Style="{StaticResource ComboBoxStyleLocal}"
+                                                  GotFocus="InputGotFocus"
+                                                  LostFocus="InputLostFocus"
+                                                  Tag="Vyberte řazení"
+                                                  ItemsSource="{Binding BetSortOptions}"
+                                                  SelectedItem="{Binding SelectedBetSortOption}"
+                                                  DisplayMemberPath="Label" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="3" Margin="0,0,12,0">
+                                        <TextBlock Style="{StaticResource LabelStyle}" Text="Počet na stránku" />
+                                        <ComboBox Style="{StaticResource ComboBoxStyleLocal}"
+                                                  GotFocus="InputGotFocus"
+                                                  LostFocus="InputLostFocus"
+                                                  Tag="Vyberte limit"
+                                                  ItemsSource="{Binding PageSizeOptions}"
+                                                  SelectedItem="{Binding SelectedPageSize}" />
+                                    </StackPanel>
+
+                                    <Button Grid.Column="4"
+                                            Width="150"
+                                            VerticalAlignment="Bottom"
+                                            Style="{StaticResource SecondaryButtonStyleLocal}"
+                                            Margin="0"
+                                            MouseEnter="ActionButtonMouseEnter"
+                                            MouseLeave="ActionButtonMouseLeave"
+                                            Command="{Binding ResetBetFiltersCommand}"
+                                            Content="Obnovit filtry" />
+                                </Grid>
+
+                                <ListView x:Name="RecentBetsList"
+                                          Grid.Row="2"
+                                          Margin="0,18,0,0"
+                                          ItemsSource="{Binding VisibleRecentBets}"
+                                          AlternationCount="200"
+                                          Background="Transparent"
+                                          BorderThickness="0">
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem">
+                                            <Setter Property="Padding" Value="0" />
+                                            <Setter Property="Margin" Value="0,0,0,8" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <EventSetter Event="Loaded" Handler="RecentBetItemLoaded" />
+                                            <EventSetter Event="MouseDoubleClick" Handler="RecentBetItemMouseDoubleClick" />
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="12"
+                                                    BorderBrush="#33E2E8F0"
+                                                    BorderThickness="1"
+                                                    CornerRadius="16"
+                                                    Background="#C00B1526"
+                                                    MouseEnter="TicketCardMouseEnter"
+                                                    MouseLeave="TicketCardMouseLeave">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" Text="{Binding EventName}" />
+                                                        <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                                                            <Border Padding="10,4" Background="{Binding OutcomeBadgeBackground}" CornerRadius="999">
+                                                                <TextBlock Foreground="{Binding OutcomeBadgeForeground}" FontWeight="SemiBold" Text="{Binding OutcomeBadgeText}" />
+                                                            </Border>
+                                                            <Border Margin="8,0,0,0" Padding="10,4" Background="#3A7C2D12" CornerRadius="999">
+                                                                <TextBlock Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" Text="{Binding OddsDisplay}" />
+                                                            </Border>
+                                                        </StackPanel>
+                                                        <TextBlock Margin="0,8,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding BettorName}" />
+                                                        <TextBlock Margin="0,2,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding StakeDisplay}" />
+                                                        <TextBlock Margin="0,2,0,0" Foreground="#94A3B8" Text="{Binding PlacedAtDisplay}" />
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                        <TextBlock HorizontalAlignment="Right" Foreground="{StaticResource SecondaryTextBrush}" Text="Potenciální výhra" />
+                                                        <TextBlock Margin="0,4,0,0" HorizontalAlignment="Right" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}" Text="{Binding PotentialPayoutDisplay}" />
+                                                    </StackPanel>
+
+                                                    <WrapPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
+                                                        <Button Style="{StaticResource TicketActionButtonStyle}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding EditCommand}" CommandParameter="{Binding}" Content="Editovat" />
+                                                        <Button Style="{StaticResource TicketActionButtonStyle}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding AddBettorCommand}" CommandParameter="{Binding}" Content="Přidat tipéra" />
+                                                        <Button Style="{StaticResource TicketActionButtonStyle}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding MarkWonCommand}" CommandParameter="{Binding}" Content="Výherní" />
+                                                        <Button Style="{StaticResource TicketActionButtonStyle}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding MarkLostCommand}" CommandParameter="{Binding}" Content="Nevýherní" />
+                                                        <Button Style="{StaticResource TicketActionButtonStyle}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding ResetOutcomeCommand}" CommandParameter="{Binding}" Content="Vrátit" />
+                                                        <Button Style="{StaticResource TicketActionButtonStyle}" Margin="0" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding DeleteCommand}" CommandParameter="{Binding}" Content="Smazat" />
+                                                    </WrapPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+
+                                <DockPanel Grid.Row="3" Margin="0,16,0,0" LastChildFill="False">
+                                    <TextBlock DockPanel.Dock="Left"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                               Text="{Binding PaginationSummary}" />
+
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                        <TextBlock Margin="0,0,12,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                                   Text="{Binding CurrentPage, StringFormat=Strana {0}}" />
+                                        <TextBlock Margin="0,0,16,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                                   Text="{Binding TotalPages, StringFormat=z {0}}" />
+                                        <Button Width="120"
+                                                Style="{StaticResource SecondaryButtonStyleLocal}"
+                                                MouseEnter="ActionButtonMouseEnter"
+                                                MouseLeave="ActionButtonMouseLeave"
+                                                Command="{Binding PreviousPageCommand}"
+                                                Content="Předchozí" />
+                                        <Button Width="120"
+                                                Style="{StaticResource SecondaryButtonStyleLocal}"
+                                                Margin="0"
+                                                MouseEnter="ActionButtonMouseEnter"
+                                                MouseLeave="ActionButtonMouseLeave"
+                                                Command="{Binding NextPageCommand}"
+                                                Content="Další" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </Grid>
+                        </Border>
+                    </TabItem>
+
+                    <TabItem Header="Nastavení"
+                             Style="{StaticResource TabItemStyleLocal}"
+                             Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Border Margin="0,12,0,0" Style="{StaticResource CardStyle}" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                            <StackPanel MaxWidth="520">
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Nastavení provozu" />
+                                <TextBlock Margin="0,4,0,14" Foreground="{StaticResource SecondaryTextBrush}" Text="Přizpůsobte si živé aktualizace, automatické obnovování i chování rozhraní." />
+
+                                <CheckBox Style="{StaticResource CheckBoxStyleLocal}" IsChecked="{Binding Configuration.EnableAutoRefresh}" Content="Automaticky obnovovat přehled" />
+                                <CheckBox Style="{StaticResource CheckBoxStyleLocal}" IsChecked="{Binding Configuration.EnableRealtimeRefresh}" Content="Aktualizovat při živých událostech" />
+                                <CheckBox Margin="0,0,0,12" Style="{StaticResource CheckBoxStyleLocal}" IsChecked="{Binding Configuration.EnableTicketAnimations}" Content="Zvýraznit tikety animacemi" />
+
+                                <TextBlock Style="{StaticResource LabelStyle}" Text="Interval automatické obnovy" />
+                                <ComboBox Width="180" Style="{StaticResource ComboBoxStyleLocal}" GotFocus="InputGotFocus" LostFocus="InputLostFocus" Tag="Zvolte interval" ItemsSource="{Binding Configuration.AutoRefreshIntervals}" SelectedItem="{Binding Configuration.SelectedAutoRefreshInterval}" DisplayMemberPath="Label" />
+
+                                <Border Margin="0,18,0,18" Height="1" Background="#2234475E" />
+
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Obchodní provize" />
+                                <TextBlock Margin="0,4,0,14" Foreground="{StaticResource SecondaryTextBrush}" Text="Nastavte si vlastní obchodní model a mějte provizi pod plnou kontrolou." />
+
+                                <CheckBox Style="{StaticResource CheckBoxStyleLocal}" IsChecked="{Binding Configuration.EnableOperatorCommission}" Content="Započítávat provozovatelskou provizi" />
+
+                                <TextBlock Style="{StaticResource LabelStyle}" Text="Typ provizního modelu" />
+                                <ComboBox Width="260"
+                                          Style="{StaticResource ComboBoxStyleLocal}"
+                                          GotFocus="InputGotFocus"
+                                          LostFocus="InputLostFocus"
+                                          Tag="Zvolte provizní model"
+                                          ItemsSource="{Binding Configuration.CommissionFormulas}"
+                                          SelectedItem="{Binding Configuration.SelectedCommissionFormula}"
+                                          DisplayMemberPath="Label" />
+
+                                <TextBlock Margin="0,14,0,6" Style="{StaticResource LabelStyle}" Text="Výše provize v procentech" />
+                                <TextBox Width="180"
+                                         Style="{StaticResource TextBoxStyleLocal}"
+                                         GotFocus="InputGotFocus"
+                                         LostFocus="InputLostFocus"
+                                         Text="{Binding Configuration.OperatorCommissionRatePercent, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Margin="0,14,0,6" Style="{StaticResource LabelStyle}" Text="Pevný poplatek za sázku" />
+                                <TextBox Width="180"
+                                         Style="{StaticResource TextBoxStyleLocal}"
+                                         GotFocus="InputGotFocus"
+                                         LostFocus="InputLostFocus"
+                                         Text="{Binding Configuration.OperatorFlatFeePerBet, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                                    <Button Style="{StaticResource PrimaryButtonStyleLocal}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding Configuration.SaveCommand}" Content="Uložit nastavení" />
+                                    <Button Style="{StaticResource SecondaryButtonStyleLocal}" Margin="0" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding Configuration.ResetCommand}" Content="Výchozí hodnoty" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </TabItem>
+
+                    <TabItem Header="Audit"
+                             Style="{StaticResource TabItemStyleLocal}"
+                             Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Border Margin="0,12,0,0" Style="{StaticResource CardStyle}" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <DockPanel Grid.Row="0" LastChildFill="False">
+                                    <StackPanel DockPanel.Dock="Left">
+                                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Auditní stopa provozu" />
+                                        <TextBlock Margin="0,4,0,0"
+                                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                                   Text="{Binding AuditSummary}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+
+                                    <Button DockPanel.Dock="Right"
+                                            Width="150"
+                                            Style="{StaticResource SecondaryButtonStyleLocal}"
+                                            MouseEnter="ActionButtonMouseEnter"
+                                            MouseLeave="ActionButtonMouseLeave"
+                                            Command="{Binding RefreshCommand}"
+                                            Content="Obnovit audit" />
+                                </DockPanel>
+
+                                <ListView Grid.Row="1"
+                                          Margin="0,18,0,0"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          ItemsSource="{Binding AuditEntries}"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem">
+                                            <Setter Property="Background" Value="Transparent" />
+                                            <Setter Property="BorderThickness" Value="0" />
+                                            <Setter Property="Padding" Value="0" />
+                                            <Setter Property="Margin" Value="0,0,0,12" />
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="16"
+                                                    Background="#0F172ACC"
+                                                    BorderBrush="#2234475E"
+                                                    BorderThickness="1"
+                                                    CornerRadius="18">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <StackPanel Grid.Row="0" Grid.Column="0">
+                                                        <TextBlock FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource PrimaryTextBrush}"
+                                                                   Text="{Binding ActionDisplay}" />
+                                                        <TextBlock Margin="0,4,0,0"
+                                                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                                                   Text="{Binding EntityDisplay}" />
+                                                    </StackPanel>
+
+                                                    <TextBlock Grid.Row="0"
+                                                               Grid.Column="1"
+                                                               HorizontalAlignment="Right"
+                                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                                               Text="{Binding TimestampDisplay}" />
+
+                                                    <TextBlock Grid.Row="1"
+                                                               Grid.ColumnSpan="2"
+                                                               Margin="0,10,0,0"
+                                                               Foreground="{StaticResource PrimaryTextBrush}"
+                                                               Text="{Binding ActorDisplay}"
+                                                               TextWrapping="Wrap" />
+
+                                                    <StackPanel Grid.Row="2"
+                                                                Grid.ColumnSpan="2"
+                                                                Margin="0,10,0,0">
+                                                        <TextBlock Foreground="{StaticResource SecondaryTextBrush}"
+                                                                   Text="{Binding DetailDisplay}"
+                                                                   TextWrapping="Wrap" />
+                                                        <TextBlock Margin="0,8,0,0"
+                                                                   FontSize="12"
+                                                                   Foreground="#93C5FD"
+                                                                   Text="{Binding TraceIdDisplay, StringFormat=Trace ID: {0}}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </Grid>
+                        </Border>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

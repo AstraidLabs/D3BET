@@ -1,0 +1,12 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <sys:Double x:Key="ButtonHoverScale">1.02</sys:Double>
+    <sys:Double x:Key="ButtonPressedScale">0.985</sys:Double>
+    <sys:Double x:Key="GlassCardHoverOffset">-4</sys:Double>
+    <sys:Double x:Key="InfoCardHoverOffset">-2</sys:Double>
+    <sys:Double x:Key="TicketCardHoverOffset">-6</sys:Double>
+    <sys:Double x:Key="CardLoadOffset">18</sys:Double>
+    <sys:Double x:Key="BadgeWinningScale">1.08</sys:Double>
+    <sys:Double x:Key="StatusPulseScale">1.015</sys:Double>
+</ResourceDictionary>

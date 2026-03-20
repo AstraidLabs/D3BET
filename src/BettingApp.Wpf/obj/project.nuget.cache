@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "dgSpecHash": "AsPofBRntMM=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\tvanek\\OneDrive - Seyfor\\Dokumenty\\New project 2\\src\\BettingApp.Wpf\\BettingApp.Wpf.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\tvanek\\.nuget\\packages\\mediatr\\14.1.0\\mediatr.14.1.0.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\mediatr.contracts\\2.0.1\\mediatr.contracts.2.0.1.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.aspnetcore.http.connections.client\\10.0.5\\microsoft.aspnetcore.http.connections.client.10.0.5.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.aspnetcore.signalr.client\\10.0.5\\microsoft.aspnetcore.signalr.client.10.0.5.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.aspnetcore.signalr.client.core\\10.0.5\\microsoft.aspnetcore.signalr.client.core.10.0.5.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.data.sqlite.core\\10.0.5\\microsoft.data.sqlite.core.10.0.5.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.entityframeworkcore\\10.0.5\\microsoft.entityframeworkcore.10.0.5.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.entityframeworkcore.abstractions\\10.0.5\\microsoft.entityframeworkcore.abstractions.10.0.5.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.entityframeworkcore.analyzers\\10.0.5\\microsoft.entityframeworkcore.analyzers.10.0.5.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.entityframeworkcore.relational\\10.0.5\\microsoft.entityframeworkcore.relational.10.0.5.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.entityframeworkcore.sqlite\\10.0.5\\microsoft.entityframeworkcore.sqlite.10.0.5.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.entityframeworkcore.sqlite.core\\10.0.5\\microsoft.entityframeworkcore.sqlite.core.10.0.5.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.extensions.dependencymodel\\10.0.5\\microsoft.extensions.dependencymodel.10.0.5.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.identitymodel.abstractions\\8.16.0\\microsoft.identitymodel.abstractions.8.16.0.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.identitymodel.jsonwebtokens\\8.16.0\\microsoft.identitymodel.jsonwebtokens.8.16.0.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.identitymodel.logging\\8.16.0\\microsoft.identitymodel.logging.8.16.0.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\microsoft.identitymodel.tokens\\8.16.0\\microsoft.identitymodel.tokens.8.16.0.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\sqlitepclraw.bundle_e_sqlite3\\2.1.11\\sqlitepclraw.bundle_e_sqlite3.2.1.11.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\sqlitepclraw.core\\2.1.11\\sqlitepclraw.core.2.1.11.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\sqlitepclraw.lib.e_sqlite3\\2.1.11\\sqlitepclraw.lib.e_sqlite3.2.1.11.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\sqlitepclraw.provider.e_sqlite3\\2.1.11\\sqlitepclraw.provider.e_sqlite3.2.1.11.nupkg.sha512",
+    "C:\\Users\\tvanek\\.nuget\\packages\\system.identitymodel.tokens.jwt\\8.16.0\\system.identitymodel.tokens.jwt.8.16.0.nupkg.sha512"
+  ],
+  "logs": []
+}
