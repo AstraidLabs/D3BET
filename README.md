@@ -1,44 +1,55 @@
 # D3Bet
 
-**CZ**
+[![Platform](https://img.shields.io/badge/platform-WPF%20%2B%20ASP.NET%20Core-0f172a?style=for-the-badge)](https://github.com/AstraidLabs/D3BET)
+[![.NET](https://img.shields.io/badge/.NET-10-512bd4?style=for-the-badge)](https://dotnet.microsoft.com/)
+[![Realtime](https://img.shields.io/badge/realtime-SignalR-16a34a?style=for-the-badge)](https://learn.microsoft.com/aspnet/core/signalr/)
+[![Security](https://img.shields.io/badge/security-Identity%20%2B%20OpenIddict-f97316?style=for-the-badge)](https://documentation.openiddict.com/)
 
-D3Bet je moderní platforma pro správu sázek v reálném čase. Spojuje rychlou obsluhu přepážky, živý přehled provozu, zákaznický kiosk a bezpečnou serverovou architekturu do jednoho řešení, které je připravené pro další růst.
+Smart betting operations, live trading insight, and customer-facing display experiences in one connected platform.
+
+---
+
+## 🇨🇿 Česká verze
+
+### Přehled
+
+D3Bet je moderní platforma pro správu sázek v reálném čase. Propojuje rychlou práci operátora, živý přehled provozu, zákaznický kiosk a bezpečnou serverovou architekturu do jednoho řešení, které působí jako skutečný produkt, ne jen interní nástroj.
 
 Projekt je postavený na `C#`, `WPF`, `.NET 10`, `ASP.NET Core`, `EF Core`, `SignalR`, `ASP.NET Identity` a `OpenIddict`.
 
-## Proč D3Bet
+### ✨ Hlavní přínosy
 
-- rychlá interní práce provozovatele v desktopovém `WPF` klientu
-- serverová architektura `server <-> client` s `OAuth2/OpenID Connect`
-- role `Admin` a `Operator` pro bezpečné oddělení oprávnění
-- zákaznický display pro kiosk a velké obrazovky
+- rychlá desktopová obsluha pro provozovatele v `WPF`
+- bezpečná architektura `server <-> client` s `OAuth2` a `OpenID Connect`
+- role `Admin` a `Operator` pro oddělení citlivých oprávnění
+- zákaznický display režim pro kiosky a velké obrazovky
 - dynamické oceňování kurzů podle aktivity trhu
 - auditní stopa citlivých provozních akcí
 - živá synchronizace přes `SignalR`
-- automatické nalezení serveru v lokální síti
+- automatické discovery serveru v lokální síti
 
-## Architektura
+### 🧩 Architektura řešení
 
 - [src/BettingApp.Wpf](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/src/BettingApp.Wpf)
   Operátorský desktop klient pro správu sázek, dashboard a administraci.
 - [src/BettingApp.Server](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/src/BettingApp.Server)
   Backend s API, autentizací, autorizací, discovery a auditní vrstvou.
 - [src/BettingApp.Application](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/src/BettingApp.Application)
-  Aplikační logika, commandy, query a obchodní pravidla.
+  Aplikační logika, obchodní pravidla, commandy a query.
 - [src/BettingApp.Infrastructure](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/src/BettingApp.Infrastructure)
   Persistence, `EF Core`, databázová inicializace a realtime infrastruktura.
 - [src/BettingApp.Domain](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/src/BettingApp.Domain)
   Doménové entity a jádro sázkového modelu.
 
-## Rychlý start
+### 🚀 Rychlý start
 
-### 1. Build solution
+#### 1. Build solution
 
 ```powershell
 dotnet build BettingApp.slnx
 ```
 
-### 2. Spuštění serveru
+#### 2. Spuštění serveru
 
 ```powershell
 dotnet run --project src/BettingApp.Server/BettingApp.Server.csproj
@@ -46,75 +57,75 @@ dotnet run --project src/BettingApp.Server/BettingApp.Server.csproj
 
 Výchozí adresa backendu je `http://localhost:5103`.
 
-### 3. Spuštění WPF klienta
+#### 3. Spuštění WPF klienta
 
 ```powershell
 dotnet run --project src/BettingApp.Wpf/BettingApp.Wpf.csproj
 ```
 
-Klient při startu podporuje automatické discovery serveru v lokální síti a pokusí se backend najít bez ruční konfigurace.
+Klient podporuje automatické nalezení backendu v lokální síti a při startu se pokusí server najít bez ruční konfigurace URL.
 
-## Výchozí vývojové účty
+### 🔐 Výchozí vývojové účty
 
 - `admin` / `Admin1234`
 - `operator` / `Operator1234`
 
-Tyto účty jsou určené jen pro lokální vývoj a testování. Pro reálný provoz je potřeba hesla i bootstrap konfiguraci změnit.
+Tyto účty jsou určené jen pro lokální vývoj a testování. Pro reálný provoz je potřeba bootstrap hesla změnit.
 
-## OAuth klienti
+### 🛡️ Autentizace a přístup
 
 - operátorský klient: `authorization_code + PKCE`
 - kiosk klient: `client_credentials`
+- interní provoz: role `Admin`, `Operator`
 
-## Stav repozitáře
+### 📦 Obsah repozitáře
 
-Repozitář obsahuje server i klienta v jednom solution souboru:
-
-```powershell
-BettingApp.slnx
-```
+- solution: `BettingApp.slnx`
+- changelog: [CHANGELOG.md](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/CHANGELOG.md)
 
 ---
 
-**EN**
+## 🇬🇧 English Version
 
-D3Bet is a modern betting operations platform built for real-time workflows. It combines a fast operator desktop experience, live business insight, customer-facing kiosk displays, and a secure server-driven architecture in one product-ready solution.
+### Overview
 
-The stack is powered by `C#`, `WPF`, `.NET 10`, `ASP.NET Core`, `EF Core`, `SignalR`, `ASP.NET Identity`, and `OpenIddict`.
+D3Bet is a modern real-time betting operations platform. It brings together fast operator workflows, live operational insight, customer-facing kiosk screens, and a secure server-driven architecture in one cohesive product experience.
 
-## Why D3Bet
+The platform is built with `C#`, `WPF`, `.NET 10`, `ASP.NET Core`, `EF Core`, `SignalR`, `ASP.NET Identity`, and `OpenIddict`.
 
-- fast internal operator workflows in a dedicated `WPF` desktop client
-- `server <-> client` architecture with `OAuth2/OpenID Connect`
-- `Admin` and `Operator` roles for clear security boundaries
+### ✨ Core Value
+
+- fast operator workflows in a dedicated `WPF` desktop client
+- secure `server <-> client` architecture with `OAuth2` and `OpenID Connect`
+- `Admin` and `Operator` roles for clear permission boundaries
 - customer display mode for kiosks and large public screens
 - dynamic odds calculation driven by market activity
 - audit trail for sensitive operational actions
 - live synchronization through `SignalR`
-- automatic local-network server discovery
+- automatic backend discovery on the local network
 
-## Architecture
+### 🧩 Solution Architecture
 
 - [src/BettingApp.Wpf](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/src/BettingApp.Wpf)
-  Operator desktop client for betting operations, dashboards, and administration.
+  Operator desktop client for betting workflows, dashboards, and administration.
 - [src/BettingApp.Server](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/src/BettingApp.Server)
-  Backend API with authentication, authorization, discovery, and audit services.
+  Backend API with authentication, authorization, discovery, and auditing.
 - [src/BettingApp.Application](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/src/BettingApp.Application)
-  Application logic, commands, queries, and business rules.
+  Application layer with business rules, commands, and queries.
 - [src/BettingApp.Infrastructure](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/src/BettingApp.Infrastructure)
-  Persistence, `EF Core`, database initialization, and realtime infrastructure.
+  Persistence, `EF Core`, database setup, and realtime infrastructure.
 - [src/BettingApp.Domain](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/src/BettingApp.Domain)
   Core domain entities and betting model.
 
-## Quick Start
+### 🚀 Quick Start
 
-### 1. Build the solution
+#### 1. Build the solution
 
 ```powershell
 dotnet build BettingApp.slnx
 ```
 
-### 2. Run the server
+#### 2. Run the server
 
 ```powershell
 dotnet run --project src/BettingApp.Server/BettingApp.Server.csproj
@@ -122,30 +133,28 @@ dotnet run --project src/BettingApp.Server/BettingApp.Server.csproj
 
 The default backend address is `http://localhost:5103`.
 
-### 3. Run the WPF client
+#### 3. Run the WPF client
 
 ```powershell
 dotnet run --project src/BettingApp.Wpf/BettingApp.Wpf.csproj
 ```
 
-At startup, the client can automatically discover the server on the local network and connect without manual endpoint setup.
+At startup, the client can automatically discover the backend on the local network and connect without manual endpoint setup.
 
-## Default development accounts
+### 🔐 Default Development Accounts
 
 - `admin` / `Admin1234`
 - `operator` / `Operator1234`
 
-These credentials are intended for local development only. Update passwords and bootstrap settings before any real deployment.
+These credentials are intended for local development only and should be replaced before any real deployment.
 
-## OAuth clients
+### 🛡️ Authentication and Access
 
 - operator client: `authorization_code + PKCE`
 - kiosk client: `client_credentials`
+- internal roles: `Admin`, `Operator`
 
-## Repository layout
+### 📦 Repository Layout
 
-The repository contains both server and client in a single solution:
-
-```powershell
-BettingApp.slnx
-```
+- solution: `BettingApp.slnx`
+- changelog: [CHANGELOG.md](C:/Users/tvanek/OneDrive%20-%20Seyfor/Dokumenty/New%20project%202/CHANGELOG.md)
