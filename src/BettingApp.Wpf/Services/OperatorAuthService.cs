@@ -1,7 +1,6 @@
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
-using System.Windows;
 using BettingApp.Wpf.ViewModels;
 using BettingApp.Wpf.Views;
 
@@ -86,7 +85,7 @@ public sealed class OperatorAuthService(
         loginViewModel.IsLoggingIn = false;
         loginViewModel.UserName = string.Empty;
 
-        var loginWindow = await Application.Current.Dispatcher.InvokeAsync(() =>
+        var loginWindow = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
         {
             var window = new LoginWindow(loginViewModel);
             window.Show();
@@ -106,19 +105,19 @@ public sealed class OperatorAuthService(
                 }
                 catch (HttpRequestException)
                 {
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                         loginWindow.ShowError("Nepodařilo se spojit se serverem. Zkontrolujte připojení."));
                 }
                 catch (InvalidOperationException ex)
                 {
-                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                         loginWindow.ShowError(ex.Message));
                 }
             }
         }
         finally
         {
-            await Application.Current.Dispatcher.InvokeAsync(() => loginWindow.Close());
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => loginWindow.Close());
         }
     }
 
