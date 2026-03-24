@@ -7,6 +7,7 @@ namespace BettingApp.Infrastructure.Persistence;
 public sealed class DatabaseInitializationService(BettingDbContext dbContext)
 {
     private const string InitialMigrationId = "20260320000100_InitialCreate";
+    private const string BettingMarketsMigrationId = "20260320000400_AddBettingMarkets";
     private const string EfProductVersion = "10.0.5";
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
@@ -39,6 +40,7 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
         await EnsureCommissionFeePaidColumnAsync(connection, cancellationToken);
         await EnsureMigrationHistoryTableAsync(connection, cancellationToken);
         await EnsureInitialMigrationHistoryRowAsync(connection, cancellationToken);
+        await EnsureMigrationHistoryRowAsync(connection, BettingMarketsMigrationId, cancellationToken);
     }
 
     private async Task EnsureSchemaCompatibilityAsync(CancellationToken cancellationToken)
@@ -341,13 +343,18 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
 
     private static async Task EnsureInitialMigrationHistoryRowAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
+        await EnsureMigrationHistoryRowAsync(connection, InitialMigrationId, cancellationToken);
+    }
+
+    private static async Task EnsureMigrationHistoryRowAsync(SqliteConnection connection, string migrationId, CancellationToken cancellationToken)
+    {
         await using var existsCommand = connection.CreateCommand();
         existsCommand.CommandText = """
             SELECT COUNT(*)
             FROM "__EFMigrationsHistory"
             WHERE "MigrationId" = $migrationId;
             """;
-        existsCommand.Parameters.AddWithValue("$migrationId", InitialMigrationId);
+        existsCommand.Parameters.AddWithValue("$migrationId", migrationId);
 
         var exists = Convert.ToInt32(await existsCommand.ExecuteScalarAsync(cancellationToken)) > 0;
         if (exists)
@@ -360,7 +367,7 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
             INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
             VALUES ($migrationId, $productVersion);
             """;
-        insertCommand.Parameters.AddWithValue("$migrationId", InitialMigrationId);
+        insertCommand.Parameters.AddWithValue("$migrationId", migrationId);
         insertCommand.Parameters.AddWithValue("$productVersion", EfProductVersion);
         await insertCommand.ExecuteNonQueryAsync(cancellationToken);
     }

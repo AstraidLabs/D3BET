@@ -75,6 +75,10 @@ builder.Services
         options.RegisterScopes(Scopes.DisplayRead, Scopes.Operations, Scopes.OfflineAccess, Scopes.OpenId, Scopes.Profile, Scopes.Roles);
         options.AddDevelopmentEncryptionCertificate()
             .AddDevelopmentSigningCertificate();
+        if (builder.Environment.IsDevelopment())
+        {
+            options.DisableTransportSecurityRequirement();
+        }
         options.UseAspNetCore()
             .EnableAuthorizationEndpointPassthrough()
             .EnableTokenEndpointPassthrough();
