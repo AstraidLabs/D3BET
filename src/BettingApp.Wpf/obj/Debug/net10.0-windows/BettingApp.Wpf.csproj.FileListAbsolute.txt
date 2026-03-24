@@ -87,3 +87,5 @@ C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Wpf\obj
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\MarketEditorWindow.g.cs
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Wpf\bin\Debug\net10.0-windows\System.IdentityModel.Tokens.Jwt.dll
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Wpf\obj\Debug\net10.0-windows\BettingApp.Wpf.sourcelink.json
+C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\LoginWindow.baml
+C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\LoginWindow.g.cs

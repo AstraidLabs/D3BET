@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BettingApp.Wpf")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+08640b46f8b60fa86d72742a18096c04043586bd")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ed91961cd4c921a08e3faf67a8e87198fa7508ab")]
 [assembly: System.Reflection.AssemblyProductAttribute("BettingApp.Wpf")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BettingApp.Wpf")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

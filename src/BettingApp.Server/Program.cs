@@ -22,6 +22,7 @@ using OpenIddict.Validation.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+builder.Services.AddAntiforgery();
 builder.Services.AddProblemDetails();
 builder.Services.AddSignalR();
 builder.Services.Configure<KioskOAuthClientOptions>(builder.Configuration.GetSection(KioskOAuthClientOptions.SectionName));
