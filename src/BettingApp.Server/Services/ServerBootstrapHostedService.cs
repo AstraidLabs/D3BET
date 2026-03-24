@@ -95,7 +95,8 @@ public sealed class ServerBootstrapHostedService(
         var existingApplication = await applicationManager.FindByClientIdAsync(options.ClientId, cancellationToken);
         if (existingApplication is not null)
         {
-            return;
+            await applicationManager.DeleteAsync(existingApplication, cancellationToken);
+            logger.LogInformation("Existující OAuth klient '{ClientId}' byl odstraněn před opětovným vytvořením.", options.ClientId);
         }
 
         var descriptor = new OpenIddictApplicationDescriptor
@@ -114,6 +115,7 @@ public sealed class ServerBootstrapHostedService(
                 OpenIddictConstants.Permissions.Endpoints.Token,
                 OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
                 OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                OpenIddictConstants.Permissions.GrantTypes.Password,
                 OpenIddictConstants.Permissions.ResponseTypes.Code,
                 OpenIddictConstants.Permissions.Prefixes.Scope + Configuration.Scopes.OpenId,
                 OpenIddictConstants.Permissions.Prefixes.Scope + Configuration.Scopes.Profile,

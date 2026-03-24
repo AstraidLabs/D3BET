@@ -1,17 +1,17 @@
-using System.Diagnostics;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
+using System.Windows;
+using BettingApp.Wpf.ViewModels;
+using BettingApp.Wpf.Views;
 
 namespace BettingApp.Wpf.Services;
 
 public sealed class OperatorAuthService(
     OperatorAuthOptions options,
     OperatorSessionStore sessionStore,
-    OperatorSessionContext sessionContext)
+    OperatorSessionContext sessionContext,
+    LoginViewModel loginViewModel)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly SemaphoreSlim sessionSemaphore = new(1, 1);
@@ -82,43 +82,43 @@ public sealed class OperatorAuthService(
 
     private async Task<OperatorSessionData> LoginInteractiveAsync(CancellationToken cancellationToken)
     {
-        var state = Guid.NewGuid().ToString("N");
-        var codeVerifier = CreateCodeVerifier();
-        var codeChallenge = CreateCodeChallenge(codeVerifier);
-        var authorizeUrl = BuildAuthorizeUrl(state, codeChallenge);
+        loginViewModel.ErrorMessage = null;
+        loginViewModel.IsLoggingIn = false;
+        loginViewModel.UserName = string.Empty;
 
-        using var listener = CreateListener();
-        listener.Start();
+        var loginWindow = await Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            var window = new LoginWindow(loginViewModel);
+            window.Show();
+            return window;
+        });
 
-        OpenBrowser(authorizeUrl);
-
-        var callbackContext = await listener.GetContextAsync().WaitAsync(cancellationToken);
         try
         {
-            var query = callbackContext.Request.QueryString;
-            if (!string.Equals(query["state"], state, StringComparison.Ordinal))
+            while (true)
             {
-                throw new InvalidOperationException("Přihlášení bylo přerušeno, protože se neshoduje bezpečnostní stav požadavku.");
-            }
+                var credentials = await loginWindow.WaitForCredentialsAsync(cancellationToken);
 
-            var error = query["error"];
-            if (!string.IsNullOrWhiteSpace(error))
-            {
-                throw new InvalidOperationException($"OAuth přihlášení selhalo: {error}");
+                try
+                {
+                    var session = await ExchangePasswordAsync(credentials.UserName, credentials.Password, cancellationToken);
+                    return session;
+                }
+                catch (HttpRequestException)
+                {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                        loginWindow.ShowError("Nepodařilo se spojit se serverem. Zkontrolujte připojení."));
+                }
+                catch (InvalidOperationException ex)
+                {
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                        loginWindow.ShowError(ex.Message));
+                }
             }
-
-            var code = query["code"];
-            if (string.IsNullOrWhiteSpace(code))
-            {
-                throw new InvalidOperationException("OAuth server nevrátil autorizační kód.");
-            }
-
-            await WriteBrowserResponseAsync(callbackContext.Response, "Přihlášení bylo úspěšné. Můžete zavřít toto okno a vrátit se do D3Bet.");
-            return await ExchangeAuthorizationCodeAsync(code, codeVerifier, cancellationToken);
         }
         finally
         {
-            listener.Stop();
+            await Application.Current.Dispatcher.InvokeAsync(() => loginWindow.Close());
         }
     }
 
@@ -140,22 +140,31 @@ public sealed class OperatorAuthService(
         return await CreateSessionAsync(tokenResponse, cancellationToken);
     }
 
-    private async Task<OperatorSessionData> ExchangeAuthorizationCodeAsync(string code, string codeVerifier, CancellationToken cancellationToken)
+    private async Task<OperatorSessionData> ExchangePasswordAsync(string userName, string password, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{options.ServerBaseUrl.TrimEnd('/')}/connect/token")
         {
             Content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
-                ["grant_type"] = "authorization_code",
+                ["grant_type"] = "password",
                 ["client_id"] = options.ClientId,
-                ["code"] = code,
-                ["redirect_uri"] = options.RedirectUri,
-                ["code_verifier"] = codeVerifier
+                ["username"] = userName,
+                ["password"] = password,
+                ["scope"] = options.Scope
             })
         };
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await DeserializeAsync<ErrorResponse>(response, cancellationToken);
+            var message = !string.IsNullOrWhiteSpace(errorBody.ErrorDescription)
+                ? errorBody.ErrorDescription
+                : "Neplatné přihlašovací údaje.";
+            throw new InvalidOperationException(message);
+        }
+
         var tokenResponse = await DeserializeAsync<TokenResponse>(response, cancellationToken);
         return await CreateSessionAsync(tokenResponse, cancellationToken);
     }
@@ -206,85 +215,6 @@ public sealed class OperatorAuthService(
         };
     }
 
-    private string BuildAuthorizeUrl(string state, string codeChallenge)
-    {
-        var query = new Dictionary<string, string>
-        {
-            ["client_id"] = options.ClientId,
-            ["response_type"] = "code",
-            ["redirect_uri"] = options.RedirectUri,
-            ["scope"] = options.Scope,
-            ["state"] = state,
-            ["code_challenge"] = codeChallenge,
-            ["code_challenge_method"] = "S256"
-        };
-
-        var queryString = string.Join("&", query.Select(pair =>
-            $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}"));
-
-        return $"{options.ServerBaseUrl.TrimEnd('/')}/connect/authorize?{queryString}";
-    }
-
-    private HttpListener CreateListener()
-    {
-        var listener = new HttpListener();
-        listener.Prefixes.Add(options.RedirectUri);
-        return listener;
-    }
-
-    private static void OpenBrowser(string url)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = url,
-            UseShellExecute = true
-        };
-
-        Process.Start(startInfo);
-    }
-
-    private static async Task WriteBrowserResponseAsync(HttpListenerResponse response, string message)
-    {
-        var bytes = Encoding.UTF8.GetBytes($"""
-            <!DOCTYPE html>
-            <html lang="cs">
-            <head><meta charset="utf-8"><title>D3Bet Přihlášení</title></head>
-            <body style="font-family:Segoe UI,Arial,sans-serif;background:#08111f;color:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">
-                <div style="max-width:480px;padding:28px;border-radius:20px;background:#0f172a;border:1px solid #334155;">
-                    <div style="font-size:14px;font-weight:700;color:#f97316;">D3BET</div>
-                    <h1 style="margin:10px 0 8px;">Přihlášení dokončeno</h1>
-                    <p style="margin:0;color:#a7b6ca;line-height:1.6;">{WebUtility.HtmlEncode(message)}</p>
-                </div>
-            </body>
-            </html>
-            """);
-
-        response.ContentType = "text/html; charset=utf-8";
-        response.ContentLength64 = bytes.Length;
-        await response.OutputStream.WriteAsync(bytes);
-        response.OutputStream.Close();
-    }
-
-    private static string CreateCodeVerifier()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(32);
-        return Base64UrlEncode(bytes);
-    }
-
-    private static string CreateCodeChallenge(string codeVerifier)
-    {
-        var hash = SHA256.HashData(Encoding.ASCII.GetBytes(codeVerifier));
-        return Base64UrlEncode(hash);
-    }
-
-    private static string Base64UrlEncode(byte[] bytes)
-    {
-        return Convert.ToBase64String(bytes)
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
-    }
-
     private static async Task<T> DeserializeAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -308,5 +238,12 @@ public sealed class OperatorAuthService(
         public string UserName { get; set; } = string.Empty;
 
         public List<string> Roles { get; set; } = [];
+    }
+
+    private sealed class ErrorResponse
+    {
+        public string? Error { get; set; }
+
+        public string? ErrorDescription { get; set; }
     }
 }
