@@ -73,6 +73,7 @@ builder.Services
             .RequireProofKeyForCodeExchange();
         options.AllowRefreshTokenFlow();
         options.AllowClientCredentialsFlow();
+        options.AllowPasswordFlow();
         options.RegisterScopes(Scopes.DisplayRead, Scopes.Operations, Scopes.OfflineAccess, Scopes.OpenId, Scopes.Profile, Scopes.Roles);
         options.AddDevelopmentEncryptionCertificate()
             .AddDevelopmentSigningCertificate();
@@ -243,6 +244,7 @@ app.UseStatusCodePages(async statusCodeContext =>
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAntiforgery();
 
 app.MapGet("/account/login", (
     [FromQuery] string? returnUrl,
@@ -693,6 +695,25 @@ app.MapPost("/connect/token", async (HttpContext context) =>
         }
 
         var tokenPrincipal = await principalFactory.CreateAsync(user, result.Principal.GetScopes(), context.RequestAborted);
+        return Results.SignIn(tokenPrincipal, properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    }
+
+    if (request.IsPasswordGrantType())
+    {
+        var userManager = context.RequestServices.GetRequiredService<UserManager<IdentityUser>>();
+        var principalFactory = context.RequestServices.GetRequiredService<OperatorPrincipalFactory>();
+
+        var user = await userManager.FindByNameAsync(request.Username ?? string.Empty);
+        if (user is null || !await userManager.CheckPasswordAsync(user, request.Password ?? string.Empty))
+        {
+            return Results.Json(new
+            {
+                error = OpenIddictConstants.Errors.InvalidGrant,
+                error_description = "Neplatné přihlašovací údaje."
+            }, statusCode: 400);
+        }
+
+        var tokenPrincipal = await principalFactory.CreateAsync(user, request.GetScopes(), context.RequestAborted);
         return Results.SignIn(tokenPrincipal, properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 

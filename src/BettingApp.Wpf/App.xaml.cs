@@ -35,6 +35,7 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<ServerDiscoveryService>();
                 services.AddSingleton<OperatorAuthService>();
                 services.AddSingleton<OperationsApiClient>();
+                services.AddSingleton<LoginViewModel>();
                 services.AddSingleton<StartupViewModel>();
                 services.AddSingleton<StartupSequenceRunner>();
                 services.AddSingleton<BettingRealtimeClient>();
