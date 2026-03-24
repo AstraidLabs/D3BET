@@ -241,6 +241,7 @@ app.UseStatusCodePages(async statusCodeContext =>
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAntiforgery();
 
 app.MapGet("/account/login", ([FromQuery] string? returnUrl, [FromQuery] string? error) =>
 {
