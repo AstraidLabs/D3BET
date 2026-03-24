@@ -17,3 +17,4 @@ C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Infrast
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Infrastructure\obj\Debug\net10.0\ref\BettingApp.Infrastructure.dll
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Infrastructure\bin\Debug\net10.0\BettingApp.Infrastructure.runtimeconfig.json
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.genruntimeconfig.cache
+C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.sourcelink.json

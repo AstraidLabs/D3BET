@@ -43,7 +43,7 @@ public sealed class ServerBootstrapHostedService(
     {
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
-        foreach (var roleName in new[] { Roles.Admin, Roles.Operator })
+        foreach (var roleName in new[] { Roles.Admin, Roles.Operator, Roles.Customer })
         {
             if (await roleManager.RoleExistsAsync(roleName))
             {
@@ -159,7 +159,8 @@ public sealed class ServerBootstrapHostedService(
         {
             user = new IdentityUser
             {
-                UserName = userOptions.UserName
+                UserName = userOptions.UserName,
+                EmailConfirmed = true
             };
 
             var createResult = await userManager.CreateAsync(user, userOptions.Password);

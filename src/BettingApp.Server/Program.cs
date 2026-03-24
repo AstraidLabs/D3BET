@@ -53,6 +53,7 @@ builder.Services
         options.Password.RequireUppercase = false;
         options.Password.RequireNonAlphanumeric = false;
         options.Password.RequiredLength = 8;
+        options.SignIn.RequireConfirmedAccount = true;
     })
     .AddEntityFrameworkStores<ServerIdentityDbContext>()
     .AddDefaultTokenProviders();
@@ -118,6 +119,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<CustomerDisplayQueryService>();
 builder.Services.AddScoped<OperatorPrincipalFactory>();
 builder.Services.AddScoped<AuditLogService>();
+builder.Services.AddSingleton<AccountPageRenderer>();
 builder.Services.AddSingleton<ServerAppSettingsStore>();
 builder.Services.AddHostedService<ServerBootstrapHostedService>();
 builder.Services.AddHostedService<ServerDiscoveryHostedService>();
@@ -236,43 +238,14 @@ app.UseStatusCodePages(async statusCodeContext =>
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/account/login", ([FromQuery] string? returnUrl, [FromQuery] string? error) =>
+app.MapGet("/account/login", (
+    [FromQuery] string? returnUrl,
+    [FromQuery] string? error,
+    [FromQuery] string? info,
+    AccountPageRenderer renderer) =>
 {
     var safeReturnUrl = string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl;
-    var errorMarkup = string.IsNullOrWhiteSpace(error)
-        ? string.Empty
-        : $"<div style=\"margin-bottom:16px;padding:12px 14px;border-radius:12px;background:#3f1d1d;color:#fecaca;border:1px solid #7f1d1d;\">{System.Net.WebUtility.HtmlEncode(error)}</div>";
-
-    var html = $$"""
-        <!DOCTYPE html>
-        <html lang="cs">
-        <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
-            <title>D3Bet Přihlášení</title>
-        </head>
-        <body style="margin:0;font-family:Segoe UI,Arial,sans-serif;background:#08111f;color:#f8fafc;">
-            <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
-                <div style="width:100%;max-width:420px;background:#0f172acc;border:1px solid #334155;border-radius:24px;padding:28px;box-shadow:0 18px 48px rgba(0,0,0,0.35);">
-                    <div style="font-size:14px;font-weight:700;color:#f97316;letter-spacing:0.06em;">D3BET</div>
-                    <h1 style="margin:10px 0 8px;font-size:30px;">Přihlášení provozovatele</h1>
-                    <p style="margin:0 0 22px;color:#a7b6ca;line-height:1.5;">Přihlaste se svým provozním účtem a bezpečně otevřete interní správu kurzů, tiketů a vyhodnocení.</p>
-                    {{errorMarkup}}
-                    <form method="post" action="/account/login">
-                        <input type="hidden" name="ReturnUrl" value="{{System.Net.WebUtility.HtmlEncode(safeReturnUrl)}}" />
-                        <label style="display:block;margin-bottom:6px;color:#a7b6ca;font-weight:600;">Uživatelské jméno</label>
-                        <input name="UserName" autocomplete="username" style="width:100%;box-sizing:border-box;margin-bottom:16px;padding:12px 14px;border-radius:12px;border:1px solid #334155;background:#0b1526;color:#f8fafc;" />
-                        <label style="display:block;margin-bottom:6px;color:#a7b6ca;font-weight:600;">Heslo</label>
-                        <input name="Password" type="password" autocomplete="current-password" style="width:100%;box-sizing:border-box;margin-bottom:22px;padding:12px 14px;border-radius:12px;border:1px solid #334155;background:#0b1526;color:#f8fafc;" />
-                        <button type="submit" style="width:100%;padding:13px 16px;border:none;border-radius:14px;background:#f97316;color:white;font-weight:700;cursor:pointer;">Přihlásit a pokračovat</button>
-                    </form>
-                </div>
-            </div>
-        </body>
-        </html>
-        """;
-
-    return Results.Content(html, "text/html; charset=utf-8");
+    return Results.Content(renderer.RenderLogin(safeReturnUrl, error, info), "text/html; charset=utf-8");
 });
 
 app.MapPost("/account/login", async (
@@ -289,6 +262,16 @@ app.MapPost("/account/login", async (
     var result = await signInManager.PasswordSignInAsync(user, loginModel.Password, false, lockoutOnFailure: false);
     if (!result.Succeeded)
     {
+        if (!user.EmailConfirmed)
+        {
+            return Results.Redirect($"/account/login?returnUrl={Uri.EscapeDataString(loginModel.ReturnUrl)}&error={Uri.EscapeDataString("Účet ještě není aktivní. Dokončete aktivaci nebo si vyžádejte nový aktivační odkaz.")}");
+        }
+
+        if (await userManager.IsLockedOutAsync(user))
+        {
+            return Results.Redirect($"/account/login?returnUrl={Uri.EscapeDataString(loginModel.ReturnUrl)}&error={Uri.EscapeDataString("Účet je dočasně uzamčený. Obnovte přístup přes reaktivaci nebo reset hesla.")}");
+        }
+
         return Results.Redirect($"/account/login?returnUrl={Uri.EscapeDataString(loginModel.ReturnUrl)}&error={Uri.EscapeDataString("Neplatné přihlašovací údaje.")}");
     }
 
@@ -298,6 +281,355 @@ app.MapPost("/account/login", async (
     }
 
     return Results.LocalRedirect(loginModel.ReturnUrl);
+});
+
+app.MapGet("/account/register", (AccountPageRenderer renderer) =>
+    Results.Content(renderer.RenderRegister(new RegisterAccountFormModel()), "text/html; charset=utf-8"));
+
+app.MapPost("/account/register", async (
+    [FromForm] RegisterAccountFormModel model,
+    HttpContext context,
+    UserManager<IdentityUser> userManager,
+    AccountPageRenderer renderer,
+    AuditLogService auditLogService) =>
+{
+    if (string.IsNullOrWhiteSpace(model.UserName) || string.IsNullOrWhiteSpace(model.Password))
+    {
+        return Results.Content(renderer.RenderRegister(model, error: "Vyplňte uživatelské jméno i heslo."), "text/html; charset=utf-8");
+    }
+
+    if (!string.Equals(model.Password, model.ConfirmPassword, StringComparison.Ordinal))
+    {
+        return Results.Content(renderer.RenderRegister(model, error: "Hesla se neshodují."), "text/html; charset=utf-8");
+    }
+
+    var existingUser = await userManager.FindByNameAsync(model.UserName.Trim());
+    if (existingUser is not null)
+    {
+        return Results.Content(renderer.RenderRegister(model, error: "Zadané uživatelské jméno už existuje."), "text/html; charset=utf-8");
+    }
+
+    if (!string.IsNullOrWhiteSpace(model.Email))
+    {
+        var emailOwner = await userManager.FindByEmailAsync(model.Email.Trim());
+        if (emailOwner is not null)
+        {
+            return Results.Content(renderer.RenderRegister(model, error: "Zadaný e-mail už používá jiný účet."), "text/html; charset=utf-8");
+        }
+    }
+
+    var user = new IdentityUser
+    {
+        UserName = model.UserName.Trim(),
+        Email = string.IsNullOrWhiteSpace(model.Email) ? null : model.Email.Trim(),
+        EmailConfirmed = false
+    };
+
+    var createResult = await userManager.CreateAsync(user, model.Password);
+    if (!createResult.Succeeded)
+    {
+        return Results.Content(
+            renderer.RenderRegister(model, error: string.Join(" ", createResult.Errors.Select(error => error.Description))),
+            "text/html; charset=utf-8");
+    }
+
+    await userManager.AddToRoleAsync(user, Roles.Customer);
+    var activationLink = await BuildActivationLinkAsync(context, userManager, user);
+    await auditLogService.RecordAsync(context, "SelfServiceRegistered", "IdentityUser", user.Id, new
+    {
+        user.UserName,
+        user.Email
+    });
+
+    return Results.Content(
+        renderer.RenderRegister(
+            new RegisterAccountFormModel(),
+            info: "Účet byl vytvořen. Dokončete aktivaci přes připravený odkaz.",
+            activationLink: activationLink),
+        "text/html; charset=utf-8");
+});
+
+app.MapGet("/account/reactivate", (AccountPageRenderer renderer) =>
+    Results.Content(renderer.RenderReactivate(), "text/html; charset=utf-8"));
+
+app.MapPost("/account/reactivate", async (
+    [FromForm] ReactivateAccountFormModel model,
+    HttpContext context,
+    UserManager<IdentityUser> userManager,
+    AccountPageRenderer renderer,
+    AuditLogService auditLogService) =>
+{
+    var user = await FindUserByIdentifierAsync(userManager, model.UserNameOrEmail);
+    if (user is null)
+    {
+        return Results.Content(renderer.RenderReactivate(model.UserNameOrEmail, error: "Takový účet se nepodařilo najít."), "text/html; charset=utf-8");
+    }
+
+    if (user.EmailConfirmed)
+    {
+        return Results.Content(renderer.RenderReactivate(model.UserNameOrEmail, info: "Tento účet je už aktivní. Můžete se rovnou přihlásit."), "text/html; charset=utf-8");
+    }
+
+    var activationLink = await BuildActivationLinkAsync(context, userManager, user);
+    await auditLogService.RecordAsync(context, "SelfServiceReactivationLinkIssued", "IdentityUser", user.Id, new
+    {
+        user.UserName,
+        user.Email
+    });
+
+    return Results.Content(
+        renderer.RenderReactivate(model.UserNameOrEmail, info: "Nový aktivační odkaz je připraven.", activationLink: activationLink),
+        "text/html; charset=utf-8");
+});
+
+app.MapGet("/account/activate", async (
+    [FromQuery] string userId,
+    [FromQuery] string token,
+    HttpContext context,
+    UserManager<IdentityUser> userManager,
+    AccountPageRenderer renderer,
+    AuditLogService auditLogService) =>
+{
+    var user = await userManager.FindByIdAsync(userId);
+    if (user is null)
+    {
+        return Results.Content(renderer.RenderActivationResult("Aktivace se nezdařila", "Zadaný účet se nepodařilo dohledat."), "text/html; charset=utf-8");
+    }
+
+    if (user.EmailConfirmed)
+    {
+        return Results.Content(renderer.RenderActivationResult("Účet už je aktivní", "Tento účet už byl aktivován dříve. Můžete se přihlásit."), "text/html; charset=utf-8");
+    }
+
+    var result = await userManager.ConfirmEmailAsync(user, token);
+    if (!result.Succeeded)
+    {
+        return Results.Content(
+            renderer.RenderActivationResult(
+                "Aktivace se nezdařila",
+                string.Join(" ", result.Errors.Select(error => error.Description)),
+                "Vyžádat nový aktivační odkaz",
+                "/account/reactivate"),
+            "text/html; charset=utf-8");
+    }
+
+    await auditLogService.RecordAsync(context, "SelfServiceActivated", "IdentityUser", user.Id, new
+    {
+        user.UserName
+    });
+
+    return Results.Content(renderer.RenderActivationResult("Účet je aktivní", "Aktivace proběhla úspěšně. Teď se můžete přihlásit do D3Bet."), "text/html; charset=utf-8");
+});
+
+app.MapGet("/account/forgot-password", (AccountPageRenderer renderer) =>
+    Results.Content(renderer.RenderForgotPassword(), "text/html; charset=utf-8"));
+
+app.MapPost("/account/forgot-password", async (
+    [FromForm] ForgotPasswordFormModel model,
+    HttpContext context,
+    UserManager<IdentityUser> userManager,
+    AccountPageRenderer renderer,
+    AuditLogService auditLogService) =>
+{
+    var user = await FindUserByIdentifierAsync(userManager, model.UserNameOrEmail);
+    if (user is null)
+    {
+        return Results.Content(renderer.RenderForgotPassword(model.UserNameOrEmail, error: "Takový účet se nepodařilo najít."), "text/html; charset=utf-8");
+    }
+
+    if (!user.EmailConfirmed)
+    {
+        return Results.Content(renderer.RenderForgotPassword(model.UserNameOrEmail, error: "Účet ještě není aktivní. Nejprve dokončete aktivaci nebo si vyžádejte nový aktivační odkaz."), "text/html; charset=utf-8");
+    }
+
+    var token = await userManager.GeneratePasswordResetTokenAsync(user);
+    var resetLink = BuildAbsoluteUrl(context, "/account/reset-password", new Dictionary<string, string?>
+    {
+        ["userId"] = user.Id,
+        ["token"] = token
+    });
+
+    await auditLogService.RecordAsync(context, "SelfServicePasswordResetLinkIssued", "IdentityUser", user.Id, new
+    {
+        user.UserName
+    });
+
+    return Results.Content(
+        renderer.RenderForgotPassword(model.UserNameOrEmail, info: "Odkaz pro reset hesla je připraven.", resetLink: resetLink),
+        "text/html; charset=utf-8");
+});
+
+app.MapGet("/account/reset-password", (
+    [FromQuery] string userId,
+    [FromQuery] string token,
+    AccountPageRenderer renderer) =>
+{
+    var model = new ResetPasswordFormModel
+    {
+        UserId = userId,
+        Token = token
+    };
+
+    return Results.Content(renderer.RenderResetPassword(model), "text/html; charset=utf-8");
+});
+
+app.MapPost("/account/reset-password", async (
+    [FromForm] ResetPasswordFormModel model,
+    HttpContext context,
+    UserManager<IdentityUser> userManager,
+    AccountPageRenderer renderer,
+    AuditLogService auditLogService) =>
+{
+    if (!string.Equals(model.Password, model.ConfirmPassword, StringComparison.Ordinal))
+    {
+        return Results.Content(renderer.RenderResetPassword(model, error: "Hesla se neshodují."), "text/html; charset=utf-8");
+    }
+
+    var user = await userManager.FindByIdAsync(model.UserId);
+    if (user is null)
+    {
+        return Results.Content(renderer.RenderResetPassword(model, error: "Účet už neexistuje."), "text/html; charset=utf-8");
+    }
+
+    var result = await userManager.ResetPasswordAsync(user, model.Token, model.Password);
+    if (!result.Succeeded)
+    {
+        return Results.Content(
+            renderer.RenderResetPassword(model, error: string.Join(" ", result.Errors.Select(error => error.Description))),
+            "text/html; charset=utf-8");
+    }
+
+    await auditLogService.RecordAsync(context, "SelfServicePasswordResetCompleted", "IdentityUser", user.Id, new
+    {
+        user.UserName
+    });
+
+    return Results.Content(renderer.RenderActivationResult("Heslo bylo změněno", "Nové heslo bylo úspěšně nastaveno. Můžete se znovu přihlásit."), "text/html; charset=utf-8");
+});
+
+app.MapGet("/account/profile", async (
+    HttpContext context,
+    UserManager<IdentityUser> userManager,
+    AccountPageRenderer renderer) =>
+{
+    var principal = await EnsureCookieUserAsync(context);
+    if (principal is null)
+    {
+        return Results.Redirect($"/account/login?returnUrl={Uri.EscapeDataString("/account/profile")}");
+    }
+
+    var user = await userManager.GetUserAsync(principal);
+    if (user is null)
+    {
+        await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+        return Results.Redirect("/account/login?error=" + Uri.EscapeDataString("Relace vypršela. Přihlaste se prosím znovu."));
+    }
+
+    var roles = await userManager.GetRolesAsync(user);
+    return Results.Content(
+        renderer.RenderProfile(
+            new UpdateProfileFormModel
+            {
+                UserName = user.UserName ?? string.Empty,
+                Email = user.Email ?? string.Empty
+            },
+            user.UserName ?? user.Id,
+            string.Join(", ", roles)),
+        "text/html; charset=utf-8");
+});
+
+app.MapPost("/account/profile", async (
+    [FromForm] UpdateProfileFormModel model,
+    HttpContext context,
+    UserManager<IdentityUser> userManager,
+    AccountPageRenderer renderer,
+    AuditLogService auditLogService) =>
+{
+    var principal = await EnsureCookieUserAsync(context);
+    if (principal is null)
+    {
+        return Results.Redirect($"/account/login?returnUrl={Uri.EscapeDataString("/account/profile")}");
+    }
+
+    var user = await userManager.GetUserAsync(principal);
+    if (user is null)
+    {
+        await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+        return Results.Redirect("/account/login?error=" + Uri.EscapeDataString("Relace vypršela. Přihlaste se prosím znovu."));
+    }
+
+    var roles = await userManager.GetRolesAsync(user);
+    var rolesDisplay = string.Join(", ", roles);
+
+    if (string.IsNullOrWhiteSpace(model.UserName))
+    {
+        return Results.Content(renderer.RenderProfile(model, user.UserName ?? user.Id, rolesDisplay, error: "Uživatelské jméno nesmí být prázdné."), "text/html; charset=utf-8");
+    }
+
+    if (!string.Equals(model.UserName.Trim(), user.UserName, StringComparison.Ordinal))
+    {
+        var setUserNameResult = await userManager.SetUserNameAsync(user, model.UserName.Trim());
+        if (!setUserNameResult.Succeeded)
+        {
+            return Results.Content(renderer.RenderProfile(model, user.UserName ?? user.Id, rolesDisplay, error: string.Join(" ", setUserNameResult.Errors.Select(error => error.Description))), "text/html; charset=utf-8");
+        }
+    }
+
+    var normalizedEmail = string.IsNullOrWhiteSpace(model.Email) ? null : model.Email.Trim();
+    if (!string.Equals(normalizedEmail, user.Email, StringComparison.OrdinalIgnoreCase))
+    {
+        user.Email = normalizedEmail;
+        user.NormalizedEmail = normalizedEmail?.ToUpperInvariant();
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            return Results.Content(renderer.RenderProfile(model, user.UserName ?? user.Id, rolesDisplay, error: string.Join(" ", updateResult.Errors.Select(error => error.Description))), "text/html; charset=utf-8");
+        }
+    }
+
+    if (!string.IsNullOrWhiteSpace(model.NewPassword))
+    {
+        if (!string.Equals(model.NewPassword, model.ConfirmNewPassword, StringComparison.Ordinal))
+        {
+            return Results.Content(renderer.RenderProfile(model, user.UserName ?? user.Id, rolesDisplay, error: "Nová hesla se neshodují."), "text/html; charset=utf-8");
+        }
+
+        if (string.IsNullOrWhiteSpace(model.CurrentPassword))
+        {
+            return Results.Content(renderer.RenderProfile(model, user.UserName ?? user.Id, rolesDisplay, error: "Pro změnu hesla vyplňte i aktuální heslo."), "text/html; charset=utf-8");
+        }
+
+        var changePasswordResult = await userManager.ChangePasswordAsync(user, model.CurrentPassword, model.NewPassword);
+        if (!changePasswordResult.Succeeded)
+        {
+            return Results.Content(renderer.RenderProfile(model, user.UserName ?? user.Id, rolesDisplay, error: string.Join(" ", changePasswordResult.Errors.Select(error => error.Description))), "text/html; charset=utf-8");
+        }
+    }
+
+    await auditLogService.RecordAsync(context, "SelfServiceProfileUpdated", "IdentityUser", user.Id, new
+    {
+        user.UserName,
+        user.Email,
+        PasswordChanged = !string.IsNullOrWhiteSpace(model.NewPassword)
+    });
+
+    return Results.Content(
+        renderer.RenderProfile(
+            new UpdateProfileFormModel
+            {
+                UserName = user.UserName ?? string.Empty,
+                Email = user.Email ?? string.Empty
+            },
+            user.UserName ?? user.Id,
+            rolesDisplay,
+            info: "Profil byl úspěšně uložen."),
+        "text/html; charset=utf-8");
+});
+
+app.MapGet("/account/logout", async (HttpContext context) =>
+{
+    await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+    return Results.Redirect("/account/login?info=" + Uri.EscapeDataString("Byli jste úspěšně odhlášeni."));
 });
 
 app.MapMethods("/connect/authorize", new[] { "GET", "POST" }, async (
@@ -633,4 +965,43 @@ static string ResolveCorrelationId(HttpContext context, string headerName)
     }
 
     return Guid.NewGuid().ToString("N");
+}
+
+static async Task<string> BuildActivationLinkAsync(HttpContext context, UserManager<IdentityUser> userManager, IdentityUser user)
+{
+    var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
+    return BuildAbsoluteUrl(context, "/account/activate", new Dictionary<string, string?>
+    {
+        ["userId"] = user.Id,
+        ["token"] = token
+    });
+}
+
+static async Task<IdentityUser?> FindUserByIdentifierAsync(UserManager<IdentityUser> userManager, string? identifier)
+{
+    if (string.IsNullOrWhiteSpace(identifier))
+    {
+        return null;
+    }
+
+    var normalized = identifier.Trim();
+    return await userManager.FindByNameAsync(normalized) ?? await userManager.FindByEmailAsync(normalized);
+}
+
+static string BuildAbsoluteUrl(HttpContext context, string path, IReadOnlyDictionary<string, string?> query)
+{
+    var baseUri = $"{context.Request.Scheme}://{context.Request.Host}";
+    var queryString = string.Join("&", query
+        .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
+        .Select(pair => $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value!)}"));
+
+    return string.IsNullOrWhiteSpace(queryString)
+        ? $"{baseUri}{path}"
+        : $"{baseUri}{path}?{queryString}";
+}
+
+static async Task<System.Security.Claims.ClaimsPrincipal?> EnsureCookieUserAsync(HttpContext context)
+{
+    var authenticationResult = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+    return authenticationResult.Succeeded ? authenticationResult.Principal : null;
 }

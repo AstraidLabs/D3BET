@@ -9,3 +9,4 @@ C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Domain\
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Domain\obj\Debug\net10.0\refint\BettingApp.Domain.dll
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Domain\obj\Debug\net10.0\BettingApp.Domain.pdb
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Domain\obj\Debug\net10.0\ref\BettingApp.Domain.dll
+C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Domain\obj\Debug\net10.0\BettingApp.Domain.sourcelink.json
