@@ -193,3 +193,4 @@ C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Server\
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Server\obj\Debug\net10.0\BettingApp.Server.pdb
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Server\obj\Debug\net10.0\BettingApp.Server.genruntimeconfig.cache
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Server\obj\Debug\net10.0\ref\BettingApp.Server.dll
+C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Server\obj\Debug\net10.0\BettingApp.Server.sourcelink.json
