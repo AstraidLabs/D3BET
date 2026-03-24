@@ -75,13 +75,15 @@ builder.Services
         options.RegisterScopes(Scopes.DisplayRead, Scopes.Operations, Scopes.OfflineAccess, Scopes.OpenId, Scopes.Profile, Scopes.Roles);
         options.AddDevelopmentEncryptionCertificate()
             .AddDevelopmentSigningCertificate();
-        if (builder.Environment.IsDevelopment())
-        {
-            options.DisableTransportSecurityRequirement();
-        }
+
         options.UseAspNetCore()
             .EnableAuthorizationEndpointPassthrough()
-            .EnableTokenEndpointPassthrough();
+            .EnableTokenEndpointPassthrough()
+            // D3Bet runs on a local network where TLS is handled at the
+            // infrastructure level.  Disable the OpenIddict transport check
+            // so that HTTP endpoints work regardless of the hosting
+            // environment (prevents ID2083 errors).
+            .DisableTransportSecurityRequirement();
     })
     .AddValidation(options =>
     {
