@@ -51,6 +51,27 @@ namespace BettingApp.Server.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AuditLogEntries",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    CreatedAtUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Action = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
+                    EntityType = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
+                    EntityId = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    ActorId = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    ActorName = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    ActorRoles = table.Column<string>(type: "TEXT", maxLength: 300, nullable: false),
+                    TraceId = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    DetailJson = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AuditLogEntries", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "OpenIddictApplications",
                 columns: table => new
                 {
@@ -296,6 +317,16 @@ namespace BettingApp.Server.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_AuditLogEntries_CreatedAtUtc",
+                table: "AuditLogEntries",
+                column: "CreatedAtUtc");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AuditLogEntries_EntityType_EntityId",
+                table: "AuditLogEntries",
+                columns: new[] { "EntityType", "EntityId" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_OpenIddictApplications_ClientId",
                 table: "OpenIddictApplications",
                 column: "ClientId",
@@ -346,6 +377,9 @@ namespace BettingApp.Server.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUserTokens");
+
+            migrationBuilder.DropTable(
+                name: "AuditLogEntries");
 
             migrationBuilder.DropTable(
                 name: "OpenIddictScopes");

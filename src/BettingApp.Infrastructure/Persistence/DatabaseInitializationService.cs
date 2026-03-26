@@ -6,7 +6,7 @@ namespace BettingApp.Infrastructure.Persistence;
 
 public sealed class DatabaseInitializationService(BettingDbContext dbContext)
 {
-    private const string CurrentBaselineMigrationId = "20260326105439_InitialCreate";
+    private const string CurrentBaselineMigrationId = "20260326131502_InitialCreate";
     private const string EfProductVersion = "10.0.5";
 
     public async Task InitializeAsync(CancellationToken cancellationToken)

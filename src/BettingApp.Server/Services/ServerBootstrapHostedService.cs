@@ -17,7 +17,7 @@ public sealed class ServerBootstrapHostedService(
     IOptions<BootstrapIdentityOptions> bootstrapIdentityOptions,
     ILogger<ServerBootstrapHostedService> logger) : IHostedService
 {
-    private const string InitialIdentityMigrationId = "20260320120807_InitialIdentityOpenIddict";
+    private const string InitialIdentityMigrationId = "20260326131525_InitialIdentityOpenIddict";
     private const string EfProductVersion = "10.0.5";
 
     public async Task StartAsync(CancellationToken cancellationToken)

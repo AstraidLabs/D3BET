@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BettingApp.Server.Data.Migrations
 {
     [DbContext(typeof(ServerIdentityDbContext))]
-    [Migration("20260320130334_AddAuditLogEntries")]
-    partial class AddAuditLogEntries
+    [Migration("20260326131525_InitialIdentityOpenIddict")]
+    partial class InitialIdentityOpenIddict
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
