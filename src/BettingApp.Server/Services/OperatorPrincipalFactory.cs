@@ -18,11 +18,11 @@ public sealed class OperatorPrincipalFactory(UserManager<IdentityUser> userManag
         var scopes = requestedScopes
             .Where(scope => !string.IsNullOrWhiteSpace(scope))
             .Where(scope =>
-                scope is Scopes.OpenId or Scopes.Profile or Scopes.OfflineAccess or Scopes.Roles ||
-                (scope == Scopes.Operations && roles.Any(role =>
+            scope is Configuration.Scopes.OpenId or Configuration.Scopes.Profile or Configuration.Scopes.OfflineAccess or Configuration.Scopes.Roles ||
+                (scope == Configuration.Scopes.Operations && roles.Any(role =>
                     string.Equals(role, Roles.Admin, StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(role, Roles.Operator, StringComparison.OrdinalIgnoreCase))) ||
-                (scope == Scopes.DisplayRead && roles.Any(role =>
+                (scope == Configuration.Scopes.DisplayRead && roles.Any(role =>
                     string.Equals(role, Roles.Admin, StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(role, Roles.Operator, StringComparison.OrdinalIgnoreCase))))
             .Distinct(StringComparer.Ordinal)
@@ -44,6 +44,13 @@ public sealed class OperatorPrincipalFactory(UserManager<IdentityUser> userManag
         var principal = new ClaimsPrincipal(identity);
         principal.SetScopes(scopes);
         principal.SetResources("d3bet-api");
+        principal.SetDestinations(static claim => claim.Type switch
+        {
+            OpenIddictConstants.Claims.Subject => [OpenIddictConstants.Destinations.AccessToken],
+            OpenIddictConstants.Claims.Name => [OpenIddictConstants.Destinations.AccessToken],
+            OpenIddictConstants.Claims.Role => [OpenIddictConstants.Destinations.AccessToken],
+            _ => []
+        });
 
         return principal;
     }

@@ -29,6 +29,17 @@ public sealed class OperatorAuthService(
             var existing = sessionContext.CurrentSession ?? await sessionStore.LoadAsync();
             if (existing is not null)
             {
+                if (!string.IsNullOrWhiteSpace(existing.RefreshToken))
+                {
+                    var refreshed = await TryRefreshSessionSilentlyCore(existing, cancellationToken);
+                    if (refreshed is not null)
+                    {
+                        sessionContext.Set(refreshed);
+                        await sessionStore.SaveAsync(refreshed);
+                        return refreshed;
+                    }
+                }
+
                 if (existing.ExpiresAtUtc > DateTime.UtcNow.AddMinutes(1))
                 {
                     var validated = await TryLoadProfileAsync(existing.AccessToken, existing.RefreshToken, existing.ExpiresAtUtc, cancellationToken);
@@ -106,35 +117,47 @@ public sealed class OperatorAuthService(
                 return null;
             }
 
-            var validated = await TryLoadProfileAsync(current.AccessToken, current.RefreshToken, current.ExpiresAtUtc, cancellationToken);
-            if (validated is not null)
+            var refreshed = await TryRefreshSessionSilentlyCore(current, cancellationToken);
+            if (refreshed is not null)
             {
-                sessionContext.Set(validated);
-                await sessionStore.SaveAsync(validated);
-                return validated;
-            }
-
-            if (string.IsNullOrWhiteSpace(current.RefreshToken))
-            {
-                return null;
-            }
-
-            try
-            {
-                var refreshed = await RefreshAsync(current.RefreshToken, cancellationToken);
                 sessionContext.Set(refreshed);
                 await sessionStore.SaveAsync(refreshed);
                 return refreshed;
             }
-            catch
-            {
-                return null;
-            }
+
+            return null;
         }
         finally
         {
             sessionSemaphore.Release();
         }
+    }
+
+    private async Task<OperatorSessionData?> TryRefreshSessionSilentlyCore(OperatorSessionData current, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(current.RefreshToken))
+        {
+            try
+            {
+                return await RefreshAsync(current.RefreshToken, cancellationToken);
+            }
+            catch
+            {
+            }
+        }
+
+        var validated = await TryLoadProfileAsync(current.AccessToken, current.RefreshToken, current.ExpiresAtUtc, cancellationToken);
+        if (validated is not null)
+        {
+            return validated;
+        }
+
+        if (string.IsNullOrWhiteSpace(current.RefreshToken))
+        {
+            return null;
+        }
+
+        return null;
     }
 
     private async Task<OperatorSessionData> LoginInteractiveAsync(CancellationToken cancellationToken)

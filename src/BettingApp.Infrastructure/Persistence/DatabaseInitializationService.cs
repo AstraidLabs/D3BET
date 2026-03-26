@@ -40,11 +40,14 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
         await EnsureWinningColumnAsync(connection, cancellationToken);
         await EnsureCommissionFeePaidColumnAsync(connection, cancellationToken);
         await EnsureOutcomeStatusColumnAsync(connection, cancellationToken);
+        await EnsureBettorsTableAsync(connection, cancellationToken);
         await EnsureBettingMarketsTableAsync(connection, cancellationToken);
+        await EnsureBetsTableAsync(connection, cancellationToken);
         await EnsureBettingMarketIdColumnAsync(connection, cancellationToken);
         await EnsureD3CreditColumnsAsync(connection, cancellationToken);
         await EnsureBettorWalletsTableAsync(connection, cancellationToken);
         await EnsureD3CreditTransactionsTableAsync(connection, cancellationToken);
+        await EnsureIndexesAsync(connection, cancellationToken);
         await EnsureMigrationHistoryRowAsync(connection, CurrentBaselineMigrationId, cancellationToken);
     }
 
@@ -56,7 +59,9 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
             await connection.OpenAsync(cancellationToken);
         }
 
+        await EnsureBettorsTableAsync(connection, cancellationToken);
         await EnsureBettingMarketsTableAsync(connection, cancellationToken);
+        await EnsureBetsTableAsync(connection, cancellationToken);
         await EnsureWinningColumnAsync(connection, cancellationToken);
         await EnsureOutcomeStatusColumnAsync(connection, cancellationToken);
         await EnsureCommissionFeePaidColumnAsync(connection, cancellationToken);
@@ -64,6 +69,7 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
         await EnsureD3CreditColumnsAsync(connection, cancellationToken);
         await EnsureBettorWalletsTableAsync(connection, cancellationToken);
         await EnsureD3CreditTransactionsTableAsync(connection, cancellationToken);
+        await EnsureIndexesAsync(connection, cancellationToken);
         await BackfillBettingMarketsAsync(connection, cancellationToken);
     }
 
@@ -406,6 +412,44 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    private static async Task EnsureBettorsTableAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS "Bettors" (
+                "Id" TEXT NOT NULL CONSTRAINT "PK_Bettors" PRIMARY KEY,
+                "Name" TEXT NOT NULL
+            );
+            """;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task EnsureBetsTableAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS "Bets" (
+                "Id" TEXT NOT NULL CONSTRAINT "PK_Bets" PRIMARY KEY,
+                "EventName" TEXT NOT NULL,
+                "Odds" TEXT NOT NULL,
+                "Stake" TEXT NOT NULL,
+                "StakeCurrencyCode" TEXT NOT NULL DEFAULT 'CZK',
+                "StakeRealMoneyEquivalent" TEXT NOT NULL DEFAULT 0.0,
+                "CreditToMoneyRateApplied" TEXT NOT NULL DEFAULT 1.0,
+                "MarketParticipationMultiplierApplied" TEXT NOT NULL DEFAULT 1.0,
+                "IsWinning" INTEGER NOT NULL DEFAULT 0,
+                "OutcomeStatus" INTEGER NOT NULL DEFAULT 0,
+                "IsCommissionFeePaid" INTEGER NOT NULL DEFAULT 0,
+                "BettingMarketId" TEXT NULL,
+                "PlacedAtUtc" TEXT NOT NULL,
+                "BettorId" TEXT NOT NULL,
+                CONSTRAINT "FK_Bets_BettingMarkets_BettingMarketId" FOREIGN KEY ("BettingMarketId") REFERENCES "BettingMarkets" ("Id") ON DELETE RESTRICT,
+                CONSTRAINT "FK_Bets_Bettors_BettorId" FOREIGN KEY ("BettorId") REFERENCES "Bettors" ("Id") ON DELETE RESTRICT
+            );
+            """;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private static async Task EnsureD3CreditTransactionsTableAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
@@ -426,6 +470,17 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
                 CONSTRAINT "FK_D3CreditTransactions_Bettors_BettorId" FOREIGN KEY ("BettorId") REFERENCES "Bettors" ("Id") ON DELETE CASCADE
             );
             CREATE INDEX IF NOT EXISTS "IX_D3CreditTransactions_BettorId_CreatedAtUtc" ON "D3CreditTransactions" ("BettorId", "CreatedAtUtc");
+            """;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task EnsureIndexesAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_Bettors_Name" ON "Bettors" ("Name");
+            CREATE INDEX IF NOT EXISTS "IX_Bets_BettingMarketId" ON "Bets" ("BettingMarketId");
+            CREATE INDEX IF NOT EXISTS "IX_Bets_BettorId" ON "Bets" ("BettorId");
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
