@@ -9,6 +9,8 @@ public sealed record BetSummaryDto(
     string EventName,
     decimal Odds,
     decimal Stake,
+    string StakeCurrencyCode,
+    decimal StakeRealMoneyEquivalent,
     bool IsWinning,
     BetOutcomeStatus OutcomeStatus,
     bool IsCommissionFeePaid,

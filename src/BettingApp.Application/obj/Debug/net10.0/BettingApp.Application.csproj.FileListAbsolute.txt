@@ -14,3 +14,19 @@ C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Applica
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Application\obj\Debug\net10.0\BettingApp.Application.pdb
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Application\obj\Debug\net10.0\ref\BettingApp.Application.dll
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Application\obj\Debug\net10.0\BettingApp.Application.sourcelink.json
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\bin\Debug\net10.0\BettingApp.Application.deps.json
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\bin\Debug\net10.0\BettingApp.Application.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\bin\Debug\net10.0\BettingApp.Application.pdb
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\bin\Debug\net10.0\BettingApp.Domain.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\bin\Debug\net10.0\BettingApp.Domain.pdb
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\obj\Debug\net10.0\BettingApp.Application.csproj.AssemblyReference.cache
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\obj\Debug\net10.0\BettingApp.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\obj\Debug\net10.0\BettingApp.Application.AssemblyInfoInputs.cache
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\obj\Debug\net10.0\BettingApp.Application.AssemblyInfo.cs
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\obj\Debug\net10.0\BettingApp.Application.csproj.CoreCompileInputs.cache
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\obj\Debug\net10.0\BettingApp.Application.sourcelink.json
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\obj\Debug\net10.0\BettingA.2C752CE1.Up2Date
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\obj\Debug\net10.0\BettingApp.Application.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\obj\Debug\net10.0\refint\BettingApp.Application.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\obj\Debug\net10.0\BettingApp.Application.pdb
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Application\obj\Debug\net10.0\ref\BettingApp.Application.dll

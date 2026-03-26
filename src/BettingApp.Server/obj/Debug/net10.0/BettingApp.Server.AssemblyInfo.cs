@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BettingApp.Server")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+14d0135fa5e9a8ad731e5080bee64c85eb2742f7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+89c16aa36f76289ce80751a1120e7e8289aa9699")]
 [assembly: System.Reflection.AssemblyProductAttribute("BettingApp.Server")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BettingApp.Server")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

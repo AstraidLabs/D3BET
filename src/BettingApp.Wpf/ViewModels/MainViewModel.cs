@@ -15,6 +15,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
     private readonly CustomerDisplayWindowService customerDisplayWindowService;
     private readonly MarketEditorWindowService marketEditorWindowService;
     private readonly ConfirmationDialogService confirmationDialogService;
+    private readonly ProfileWindowService profileWindowService;
     private readonly OperatorSessionContext operatorSessionContext;
     private readonly ServerConnectionContext serverConnectionContext;
     private readonly SemaphoreSlim loadSemaphore = new(1, 1);
@@ -49,6 +50,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         CustomerDisplayWindowService customerDisplayWindowService,
         MarketEditorWindowService marketEditorWindowService,
         ConfirmationDialogService confirmationDialogService,
+        ProfileWindowService profileWindowService,
         OperatorSessionContext operatorSessionContext,
         ServerConnectionContext serverConnectionContext)
     {
@@ -59,16 +61,35 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         this.customerDisplayWindowService = customerDisplayWindowService;
         this.marketEditorWindowService = marketEditorWindowService;
         this.confirmationDialogService = confirmationDialogService;
+        this.profileWindowService = profileWindowService;
         this.operatorSessionContext = operatorSessionContext;
         this.serverConnectionContext = serverConnectionContext;
 
-        Editor = new BetEditorViewModel(SaveAsync, CancelEditAsync);
+        Editor = new BetEditorViewModel(SaveAsync, CancelEditAsync, TopUpEditorWalletAsync);
         MarketEditor = new MarketEditorViewModel(SaveMarketAsync, CancelMarketEditAsync);
         Configuration = new AppConfigurationViewModel(SaveConfigurationAsync, ResetConfigurationToDefaults);
+        D3CreditAdmin = new D3CreditAdminViewModel(
+            RefreshD3CreditAdminAsync,
+            SaveD3CreditAdminSettingsAsync,
+            ApplyD3CreditManualAdjustmentAsync,
+            RefundD3CreditBetAsync,
+            AddD3CreditMarketRule,
+            RemoveSelectedD3CreditMarketRule);
+        Editor.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName is nameof(BetEditorViewModel.SelectedBettor)
+                or nameof(BetEditorViewModel.NewBettorName)
+                or nameof(BetEditorViewModel.SelectedMarket)
+                or nameof(BetEditorViewModel.Stake))
+            {
+                _ = RefreshEditorCreditStateAsync();
+            }
+        };
         RefreshCommand = new AsyncRelayCommand(() => LoadAsync());
         OpenNewBetEditorCommand = new AsyncRelayCommand(OpenNewBetEditorAsync, () => Markets.Any(market => market.IsActive));
         OpenNewMarketEditorCommand = new AsyncRelayCommand(OpenNewMarketEditorAsync, () => IsAdmin);
         OpenCustomerDisplayCommand = new AsyncRelayCommand(OpenCustomerDisplayAsync);
+        OpenProfileCommand = new AsyncRelayCommand(OpenProfileAsync);
         SwitchOperatorCommand = new AsyncRelayCommand(SwitchOperatorAsync);
         RecoveryActionCommand = new AsyncRelayCommand(ExecuteRecoveryActionAsync, () => HasRecoveryAction && !IsBusy);
         DeleteBetCommand = new AsyncRelayCommand<BetItemViewModel>(DeleteBetAsync, bet => bet is not null);
@@ -109,6 +130,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
     public MarketEditorViewModel MarketEditor { get; }
 
     public AppConfigurationViewModel Configuration { get; }
+
+    public D3CreditAdminViewModel D3CreditAdmin { get; }
 
     public ObservableCollection<MarketItemViewModel> Markets { get; } = new();
 
@@ -316,6 +339,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
 
     public AsyncRelayCommand OpenCustomerDisplayCommand { get; }
 
+    public AsyncRelayCommand OpenProfileCommand { get; }
+
     public AsyncRelayCommand SwitchOperatorCommand { get; }
 
     public AsyncRelayCommand RecoveryActionCommand { get; }
@@ -438,6 +463,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
             RecentBets.Clear();
             foreach (var bet in dashboard.RecentBets)
             {
+                var isCreditBet = string.Equals(bet.StakeCurrencyCode, "D3Kredit", StringComparison.OrdinalIgnoreCase);
                 RecentBets.Add(new BetItemViewModel
                 {
                     Id = bet.Id,
@@ -447,12 +473,18 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
                     BettorName = bet.BettorName,
                     Odds = bet.Odds,
                     Stake = bet.Stake,
+                    StakeCurrencyCode = bet.StakeCurrencyCode,
+                    StakeRealMoneyEquivalent = bet.StakeRealMoneyEquivalent,
                     IsWinning = bet.IsWinning,
                     OutcomeStatus = bet.OutcomeStatus,
                     IsCommissionFeePaid = bet.IsCommissionFeePaid,
                     OddsDisplay = bet.Odds.ToString("0.00", CultureInfo.CurrentCulture),
-                    StakeDisplay = bet.Stake.ToString("C", CultureInfo.CurrentCulture),
-                    PotentialPayoutDisplay = bet.PotentialPayout.ToString("C", CultureInfo.CurrentCulture),
+                    StakeDisplay = isCreditBet
+                        ? $"{bet.Stake:0.00} {bet.StakeCurrencyCode} ({bet.StakeRealMoneyEquivalent.ToString("C", CultureInfo.CurrentCulture)})"
+                        : bet.Stake.ToString("C", CultureInfo.CurrentCulture),
+                    PotentialPayoutDisplay = isCreditBet
+                        ? $"{bet.PotentialPayout:0.00} {bet.StakeCurrencyCode}"
+                        : bet.PotentialPayout.ToString("C", CultureInfo.CurrentCulture),
                     PlacedAtLocal = bet.PlacedAtLocal,
                     PlacedAtDisplay = bet.PlacedAtLocal.ToString("g", CultureInfo.CurrentCulture),
                     EditCommand = StartEditCommand,
@@ -464,10 +496,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
                 });
             }
 
+            await RefreshEditorCreditStateAsync();
+
             RebuildDashboardAnalytics();
             RebuildPagedRecentBets();
             await RebuildCustomerDisplayFromServerAsync();
             await RebuildAuditFromServerAsync();
+            await RefreshD3CreditAdminAsync();
 
             if (updateStatusMessage)
             {
@@ -510,8 +545,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
                 ? "Ukládáme změny na server a přepočítáváme aktuální kurz."
                 : "Přijímáme novou sázku a potvrzujeme její uložení.");
             decimal appliedOdds;
+            var editedBet = Editor.EditingBetId.HasValue
+                ? RecentBets.FirstOrDefault(bet => bet.Id == Editor.EditingBetId.Value)
+                : null;
+            var isCreditEdit = editedBet is not null
+                && string.Equals(editedBet.StakeCurrencyCode, "D3Kredit", StringComparison.OrdinalIgnoreCase);
 
-            if (Editor.EditingBetId.HasValue)
+            if (Editor.EditingBetId.HasValue && !isCreditEdit)
             {
                 appliedOdds = await operationsApiClient.UpdateBetAsync(
                     Editor.EditingBetId.Value,
@@ -521,14 +561,24 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
                     parsedStake,
                     Editor.IsCommissionFeePaid);
             }
-            else
+            else if (Editor.EditingBetId.HasValue)
             {
-                appliedOdds = await operationsApiClient.CreateBetAsync(
+                var placement = await operationsApiClient.UpdateCreditBetAsync(
+                    Editor.EditingBetId.Value,
                     selectedMarketId,
                     Editor.SelectedBettor?.Id,
                     Editor.NewBettorName,
-                    parsedStake,
-                    Editor.IsCommissionFeePaid);
+                    parsedStake);
+                appliedOdds = placement.AppliedOdds;
+            }
+            else
+            {
+                var placement = await operationsApiClient.CreateCreditBetAsync(
+                    selectedMarketId,
+                    Editor.SelectedBettor?.Id,
+                    Editor.NewBettorName,
+                    parsedStake);
+                appliedOdds = placement.AppliedOdds;
             }
 
             Editor.Reset();
@@ -538,7 +588,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
             ClearRecoveryAction();
             StatusMessage = wasEditing
                 ? $"Změny byly úspěšně uloženy. Aktuální kurz je {appliedOdds:0.00}."
-                : $"Nová sázka byla úspěšně přijata. Uložený kurz je {appliedOdds:0.00}.";
+                : $"Nová kreditová sázka byla úspěšně přijata. Uložený kurz je {appliedOdds:0.00}.";
         }
         catch (Exception ex)
         {
@@ -677,7 +727,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         }
 
         Editor.BeginCreate();
-        StatusMessage = "Editor je připravený pro přijetí sázky na vypsanou událost.";
+        Editor.WalletBalance = "Vyberte sázejícího nebo zadejte nového klienta pro práci s D3Kreditem.";
+        Editor.QuoteSummary = "Vklad zadáváte v D3Kreditu. Kurz přepočtu se dopočítá podle zatížení události.";
+        StatusMessage = "Editor je připravený pro přijetí kreditové sázky na vypsanou událost.";
         return betEditorWindowService.ShowAsync(Editor);
     }
 
@@ -1184,6 +1236,15 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         return customerDisplayWindowService.ShowAsync(this);
     }
 
+    private async Task OpenProfileAsync()
+    {
+        if (await profileWindowService.ShowAsync(CancellationToken.None))
+        {
+            ApplySessionContext();
+            StatusMessage = "Profil účtu byl aktualizovaný.";
+        }
+    }
+
     private async Task SwitchOperatorAsync()
     {
         try
@@ -1302,6 +1363,375 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         IsOperator = operatorSessionContext.IsOperator;
         OpenNewMarketEditorCommand.RaiseCanExecuteChanged();
         StartEditMarketCommand.RaiseCanExecuteChanged();
+    }
+
+    private async Task RefreshEditorCreditStateAsync()
+    {
+        try
+        {
+            if (Editor.SelectedBettor?.Id is Guid bettorId && bettorId != Guid.Empty)
+            {
+                var wallet = await operationsApiClient.GetD3CreditWalletAsync(bettorId);
+                Editor.WalletBalance = $"Zůstatek: {wallet.Balance:0.00} {wallet.CreditCode} | kurz zpět {wallet.LastCreditToMoneyRate:0.0000} CZK/{wallet.CreditCode}";
+            }
+            else if (!string.IsNullOrWhiteSpace(Editor.NewBettorName))
+            {
+                Editor.WalletBalance = $"Nový klient '{Editor.NewBettorName.Trim()}' dostane D3Kredit peněženku při prvním dobití nebo sázce.";
+            }
+            else
+            {
+                Editor.WalletBalance = "Vyberte sázejícího nebo zadejte nového klienta pro načtení D3Kredit peněženky.";
+            }
+
+            if (Editor.SelectedMarket is not null
+                && decimal.TryParse(Editor.Stake.Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out var creditStake)
+                && creditStake > 0)
+            {
+                var quote = await operationsApiClient.GetD3CreditQuoteAsync(Editor.SelectedMarket.Id, creditStake);
+                Editor.QuoteSummary = $"Kurz: 1 {quote.CreditCode} = {quote.CreditToMoneyRate:0.0000} {quote.RealCurrencyCode} | multiplikátor trhu {quote.MarketParticipationMultiplier:0.0000} | potenciální výhra {quote.PotentialPayoutCredits:0.00} {quote.CreditCode} ({quote.PotentialPayoutRealMoney.ToString("C", CultureInfo.CurrentCulture)})";
+            }
+            else
+            {
+                Editor.QuoteSummary = "Zadejte vklad v D3Kreditu a vyberte událost pro výpočet kurzu a možné výhry.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Editor.QuoteSummary = GetFriendlyErrorMessage(ex, "D3Kredit quote se nepodařilo načíst.");
+        }
+    }
+
+    private async Task TopUpEditorWalletAsync()
+    {
+        if (!decimal.TryParse(Editor.TopUpAmount.Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) || amount <= 0)
+        {
+            StatusMessage = "Částka testovacího dobití musí být větší než 0.";
+            return;
+        }
+
+        try
+        {
+            SetBusyState("Provádíme testovací dobití D3Kreditu.");
+            var topUp = await operationsApiClient.TopUpD3CreditAsync(Editor.SelectedBettor?.Id, Editor.NewBettorName, amount);
+            StatusMessage = $"Dobití proběhlo přes {topUp.PaymentGateway}. Připsáno {topUp.AddedCredits:0.00} {topUp.CreditCode}.";
+            await LoadAsync(updateStatusMessage: false);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = GetFriendlyErrorMessage(ex, "D3Kredit se nepodařilo dobít.");
+        }
+        finally
+        {
+            ClearBusyState();
+        }
+    }
+
+    private async Task RefreshD3CreditAdminAsync()
+    {
+        if (!IsAdmin)
+        {
+            D3CreditAdmin.Wallets.Clear();
+            D3CreditAdmin.Transactions.Clear();
+            D3CreditAdmin.MarketRules.Clear();
+            return;
+        }
+
+        var settings = await operationsApiClient.GetD3CreditAdminSettingsAsync();
+        var wallets = await operationsApiClient.GetD3CreditAdminWalletsAsync(D3CreditAdmin.WalletSearchText);
+        var transactions = await operationsApiClient.GetD3CreditAdminTransactionsAsync(D3CreditAdmin.WalletSearchText);
+        var culture = CultureInfo.CurrentCulture;
+
+        D3CreditAdmin.CreditCode = settings.CreditCode;
+        D3CreditAdmin.BaseCurrencyCode = settings.BaseCurrencyCode;
+        D3CreditAdmin.BaseCreditsPerCurrencyUnit = settings.BaseCreditsPerCurrencyUnit.ToString("0.####", CultureInfo.InvariantCulture);
+        D3CreditAdmin.BaseCurrencyUnitsPerCredit = settings.BaseCurrencyUnitsPerCredit.ToString("0.####", CultureInfo.InvariantCulture);
+        D3CreditAdmin.LowParticipationThreshold = settings.LowParticipationThreshold.ToString(CultureInfo.InvariantCulture);
+        D3CreditAdmin.LowParticipationBoostPercent = settings.LowParticipationBoostPercent.ToString("0.##", CultureInfo.InvariantCulture);
+        D3CreditAdmin.HighParticipationThreshold = settings.HighParticipationThreshold.ToString(CultureInfo.InvariantCulture);
+        D3CreditAdmin.HighParticipationReductionPercent = settings.HighParticipationReductionPercent.ToString("0.##", CultureInfo.InvariantCulture);
+        D3CreditAdmin.TotalStakePressureDivisor = settings.TotalStakePressureDivisor.ToString("0.##", CultureInfo.InvariantCulture);
+        D3CreditAdmin.MaxPressureReductionPercent = settings.MaxPressureReductionPercent.ToString("0.##", CultureInfo.InvariantCulture);
+        D3CreditAdmin.OddsVolatilityWeightPercent = settings.OddsVolatilityWeightPercent.ToString("0.##", CultureInfo.InvariantCulture);
+        D3CreditAdmin.DefaultTopUpAmount = settings.DefaultTopUpAmount.ToString("0.##", CultureInfo.InvariantCulture);
+        D3CreditAdmin.EnableTestTopUpGateway = settings.EnableTestTopUpGateway;
+        D3CreditAdmin.EnableManualCreditAdjustments = settings.EnableManualCreditAdjustments;
+        D3CreditAdmin.EnableManualBetRefunds = settings.EnableManualBetRefunds;
+        D3CreditAdmin.ManualCurrencyCode = settings.BaseCurrencyCode;
+
+        D3CreditAdmin.Wallets.Clear();
+        foreach (var wallet in wallets)
+        {
+            D3CreditAdmin.Wallets.Add(new D3CreditAdminWalletItemViewModel
+            {
+                BettorId = wallet.BettorId,
+                BettorName = wallet.BettorName,
+                BalanceDisplay = $"{wallet.Balance:0.00} {wallet.CreditCode}",
+                RatesDisplay = $"Nákup {wallet.LastMoneyToCreditRate:0.0000} | zpět {wallet.LastCreditToMoneyRate:0.0000}",
+                UpdatedAtDisplay = wallet.UpdatedAtUtc == DateTime.MinValue
+                    ? "Bez pohybu"
+                    : wallet.UpdatedAtUtc.ToLocalTime().ToString("g", culture)
+            });
+        }
+
+        D3CreditAdmin.Transactions.Clear();
+        foreach (var transaction in transactions)
+        {
+            D3CreditAdmin.Transactions.Add(new D3CreditAdminTransactionItemViewModel
+            {
+                TimestampDisplay = transaction.CreatedAtUtc.ToLocalTime().ToString("g", culture),
+                BettorName = transaction.BettorName,
+                TypeDisplay = transaction.Type.ToString(),
+                CreditDisplay = $"{transaction.CreditAmount:0.00} {settings.CreditCode}",
+                MoneyDisplay = $"{transaction.RealMoneyAmount:0.00} {transaction.RealCurrencyCode}",
+                Description = transaction.Description,
+                Reference = transaction.Reference
+            });
+        }
+
+        var selectedRuleId = D3CreditAdmin.SelectedMarketRule?.MarketId;
+        D3CreditAdmin.MarketRules.Clear();
+        foreach (var rule in settings.MarketRules.OrderBy(rule => ResolveMarketName(rule.MarketId)))
+        {
+            var item = new D3CreditMarketRuleItemViewModel
+            {
+                MarketId = rule.MarketId,
+                MarketName = ResolveMarketName(rule.MarketId),
+                IsEnabled = rule.IsEnabled,
+                AdditionalMultiplierPercent = rule.AdditionalMultiplierPercent.ToString("0.##", CultureInfo.InvariantCulture),
+                OverrideMoneyToCreditRate = rule.OverrideMoneyToCreditRate?.ToString("0.####", CultureInfo.InvariantCulture) ?? string.Empty,
+                OverrideCreditToMoneyRate = rule.OverrideCreditToMoneyRate?.ToString("0.####", CultureInfo.InvariantCulture) ?? string.Empty,
+                Note = rule.Note ?? string.Empty
+            };
+            D3CreditAdmin.MarketRules.Add(item);
+            if (item.MarketId == selectedRuleId)
+            {
+                D3CreditAdmin.SelectedMarketRule = item;
+            }
+        }
+    }
+
+    private async Task SaveD3CreditAdminSettingsAsync()
+    {
+        if (!IsAdmin)
+        {
+            StatusMessage = "D3Kredit nastavení může měnit jen administrátor.";
+            return;
+        }
+
+        try
+        {
+            SetBusyState("Ukládáme pokročilé nastavení D3Kredit a burzovních pravidel.");
+
+            var payload = new OperationsApiClient.D3CreditAdminSettingsResponse
+            {
+                CreditCode = string.IsNullOrWhiteSpace(D3CreditAdmin.CreditCode) ? "D3Kredit" : D3CreditAdmin.CreditCode.Trim(),
+                BaseCurrencyCode = string.IsNullOrWhiteSpace(D3CreditAdmin.BaseCurrencyCode) ? "CZK" : D3CreditAdmin.BaseCurrencyCode.Trim().ToUpperInvariant(),
+                BaseCreditsPerCurrencyUnit = ParsePositiveDecimal(D3CreditAdmin.BaseCreditsPerCurrencyUnit, "Základní kurz měna -> kredit musí být větší než 0."),
+                BaseCurrencyUnitsPerCredit = ParsePositiveDecimal(D3CreditAdmin.BaseCurrencyUnitsPerCredit, "Základní kurz kredit -> měna musí být větší než 0."),
+                LowParticipationThreshold = ParseNonNegativeInt(D3CreditAdmin.LowParticipationThreshold, "Nízký práh účasti musí být celé číslo 0 nebo vyšší."),
+                LowParticipationBoostPercent = ParseNonNegativeDecimal(D3CreditAdmin.LowParticipationBoostPercent, "Boost pro nízkou účast musí být 0 nebo vyšší."),
+                HighParticipationThreshold = ParseNonNegativeInt(D3CreditAdmin.HighParticipationThreshold, "Vysoký práh účasti musí být celé číslo 0 nebo vyšší."),
+                HighParticipationReductionPercent = ParseNonNegativeDecimal(D3CreditAdmin.HighParticipationReductionPercent, "Redukce pro vysokou účast musí být 0 nebo vyšší."),
+                TotalStakePressureDivisor = ParsePositiveDecimal(D3CreditAdmin.TotalStakePressureDivisor, "Divisor tlakové redukce musí být větší než 0."),
+                MaxPressureReductionPercent = ParseNonNegativeDecimal(D3CreditAdmin.MaxPressureReductionPercent, "Maximální redukce musí být 0 nebo vyšší."),
+                OddsVolatilityWeightPercent = ParseNonNegativeDecimal(D3CreditAdmin.OddsVolatilityWeightPercent, "Volatilita kurzu musí být 0 nebo vyšší."),
+                EnableTestTopUpGateway = D3CreditAdmin.EnableTestTopUpGateway,
+                EnableManualCreditAdjustments = D3CreditAdmin.EnableManualCreditAdjustments,
+                EnableManualBetRefunds = D3CreditAdmin.EnableManualBetRefunds,
+                DefaultTopUpAmount = ParsePositiveDecimal(D3CreditAdmin.DefaultTopUpAmount, "Výchozí dobití musí být větší než 0.")
+            };
+
+            payload.MarketRules = D3CreditAdmin.MarketRules
+                .Where(rule => rule.MarketId != Guid.Empty)
+                .Select(rule => new OperationsApiClient.D3CreditMarketAdminRuleResponse
+                {
+                    MarketId = rule.MarketId,
+                    IsEnabled = rule.IsEnabled,
+                    AdditionalMultiplierPercent = ParseDecimalOrDefault(rule.AdditionalMultiplierPercent, 0m),
+                    OverrideMoneyToCreditRate = ParseNullableDecimal(rule.OverrideMoneyToCreditRate),
+                    OverrideCreditToMoneyRate = ParseNullableDecimal(rule.OverrideCreditToMoneyRate),
+                    Note = string.IsNullOrWhiteSpace(rule.Note) ? null : rule.Note.Trim()
+                })
+                .ToList();
+
+            await operationsApiClient.SaveD3CreditAdminSettingsAsync(payload);
+            await RefreshD3CreditAdminAsync();
+            await RefreshEditorCreditStateAsync();
+            StatusMessage = "Pokročilé D3Kredit nastavení bylo uložené.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = GetFriendlyErrorMessage(ex, "D3Kredit nastavení se nepodařilo uložit.");
+        }
+        finally
+        {
+            ClearBusyState();
+        }
+    }
+
+    private async Task ApplyD3CreditManualAdjustmentAsync()
+    {
+        if (!IsAdmin)
+        {
+            StatusMessage = "Ruční kreditní zásah může provést jen administrátor.";
+            return;
+        }
+
+        try
+        {
+            SetBusyState("Provádíme ruční kreditní zásah do peněženky.");
+            var selectedWallet = D3CreditAdmin.SelectedWallet ?? throw new InvalidOperationException("Vyberte peněženku, kterou chcete upravit.");
+            var creditAmount = ParseDecimal(D3CreditAdmin.ManualCreditAmount, "Změna kreditu musí být platné číslo.");
+            var realMoneyAmount = ParseNullableDecimal(D3CreditAdmin.ManualRealMoneyAmount);
+            var reason = string.IsNullOrWhiteSpace(D3CreditAdmin.ManualReason)
+                ? throw new InvalidOperationException("Důvod ruční úpravy je povinný.")
+                : D3CreditAdmin.ManualReason.Trim();
+
+            await operationsApiClient.ApplyD3CreditManualAdjustmentAsync(
+                selectedWallet.BettorId,
+                selectedWallet.BettorName,
+                creditAmount,
+                realMoneyAmount,
+                D3CreditAdmin.ManualCurrencyCode,
+                reason,
+                D3CreditAdmin.ManualReference);
+
+            await RefreshD3CreditAdminAsync();
+            StatusMessage = "Ruční kreditní úprava byla provedena.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = GetFriendlyErrorMessage(ex, "Ruční kreditní úpravu se nepodařilo provést.");
+        }
+        finally
+        {
+            ClearBusyState();
+        }
+    }
+
+    private async Task RefundD3CreditBetAsync()
+    {
+        if (!IsAdmin)
+        {
+            StatusMessage = "Refund kreditu může provést jen administrátor.";
+            return;
+        }
+
+        try
+        {
+            SetBusyState("Vracíme kredit zpět do peněženky sázejícího.");
+            var betId = Guid.TryParse(D3CreditAdmin.RefundBetId, out var parsedBetId)
+                ? parsedBetId
+                : throw new InvalidOperationException("ID sázky pro refund musí být platné GUID.");
+            var reason = string.IsNullOrWhiteSpace(D3CreditAdmin.RefundReason)
+                ? throw new InvalidOperationException("Důvod refundu je povinný.")
+                : D3CreditAdmin.RefundReason.Trim();
+
+            await operationsApiClient.RefundD3CreditBetAsync(betId, reason);
+            await RefreshD3CreditAdminAsync();
+            await LoadAsync(updateStatusMessage: false);
+            StatusMessage = "Refund kreditové sázky byl proveden.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = GetFriendlyErrorMessage(ex, "Refund kreditové sázky se nepodařilo provést.");
+        }
+        finally
+        {
+            ClearBusyState();
+        }
+    }
+
+    private void AddD3CreditMarketRule()
+    {
+        var candidate = Markets
+            .FirstOrDefault(market => D3CreditAdmin.MarketRules.All(rule => rule.MarketId != market.Id));
+
+        if (candidate is null)
+        {
+            StatusMessage = "Všechny aktuální události už mají vlastní D3Kredit pravidlo.";
+            return;
+        }
+
+        var item = new D3CreditMarketRuleItemViewModel
+        {
+            MarketId = candidate.Id,
+            MarketName = candidate.EventName,
+            IsEnabled = true,
+            AdditionalMultiplierPercent = "0"
+        };
+
+        D3CreditAdmin.MarketRules.Add(item);
+        D3CreditAdmin.SelectedMarketRule = item;
+        StatusMessage = $"Přidáno nové tržní pravidlo pro {candidate.EventName}.";
+    }
+
+    private void RemoveSelectedD3CreditMarketRule()
+    {
+        if (D3CreditAdmin.SelectedMarketRule is null)
+        {
+            return;
+        }
+
+        var removedName = D3CreditAdmin.SelectedMarketRule.MarketName;
+        D3CreditAdmin.MarketRules.Remove(D3CreditAdmin.SelectedMarketRule);
+        D3CreditAdmin.SelectedMarketRule = null;
+        StatusMessage = $"Tržní D3Kredit pravidlo pro {removedName} bylo odebráno z návrhu nastavení.";
+    }
+
+    private string ResolveMarketName(Guid marketId)
+    {
+        return Markets.FirstOrDefault(market => market.Id == marketId)?.EventName
+            ?? $"Událost {marketId}";
+    }
+
+    private static decimal ParseDecimal(string value, string errorMessage)
+    {
+        if (decimal.TryParse(value.Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+
+        throw new InvalidOperationException(errorMessage);
+    }
+
+    private static decimal ParsePositiveDecimal(string value, string errorMessage)
+    {
+        var parsed = ParseDecimal(value, errorMessage);
+        return parsed > 0m ? parsed : throw new InvalidOperationException(errorMessage);
+    }
+
+    private static decimal ParseNonNegativeDecimal(string value, string errorMessage)
+    {
+        var parsed = ParseDecimal(value, errorMessage);
+        return parsed >= 0m ? parsed : throw new InvalidOperationException(errorMessage);
+    }
+
+    private static int ParseNonNegativeInt(string value, string errorMessage)
+    {
+        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) && parsed >= 0)
+        {
+            return parsed;
+        }
+
+        throw new InvalidOperationException(errorMessage);
+    }
+
+    private static decimal? ParseNullableDecimal(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return ParseDecimal(value, "Neplatná číselná hodnota.");
+    }
+
+    private static decimal ParseDecimalOrDefault(string value, decimal defaultValue)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? defaultValue
+            : ParseDecimal(value, "Neplatná číselná hodnota.");
     }
 
     private void RebuildPagedRecentBets()

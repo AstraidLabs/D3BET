@@ -14,7 +14,7 @@ public sealed class OperatorSessionContext
 
     public bool IsAdmin => HasRole("Admin");
 
-    public bool IsOperator => HasRole("Operator");
+    public bool IsOperator => HasRole("Admin") || HasRole("Operator");
 
     public void Set(OperatorSessionData session)
     {

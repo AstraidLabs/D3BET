@@ -18,3 +18,23 @@ C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Infrast
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Infrastructure\bin\Debug\net10.0\BettingApp.Infrastructure.runtimeconfig.json
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.genruntimeconfig.cache
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.sourcelink.json
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\bin\Debug\net10.0\BettingApp.Infrastructure.deps.json
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\bin\Debug\net10.0\BettingApp.Infrastructure.runtimeconfig.json
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\bin\Debug\net10.0\BettingApp.Infrastructure.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\bin\Debug\net10.0\BettingApp.Infrastructure.pdb
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\bin\Debug\net10.0\BettingApp.Application.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\bin\Debug\net10.0\BettingApp.Domain.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\bin\Debug\net10.0\BettingApp.Application.pdb
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\bin\Debug\net10.0\BettingApp.Domain.pdb
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.AssemblyInfo.cs
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.sourcelink.json
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingA.DB48B701.Up2Date
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\refint\BettingApp.Infrastructure.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.pdb
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\BettingApp.Infrastructure.genruntimeconfig.cache
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Infrastructure\obj\Debug\net10.0\ref\BettingApp.Infrastructure.dll

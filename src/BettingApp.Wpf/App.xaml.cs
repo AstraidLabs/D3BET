@@ -31,10 +31,14 @@ public partial class App : System.Windows.Application
                 services.AddSingleton(new OperatorSessionStore(operatorSessionPath));
                 services.AddSingleton(new OperatorSessionContext());
                 services.AddSingleton(new ServerConnectionContext());
+                services.AddSingleton(new ShellModeContext());
                 services.AddSingleton(new OperatorAuthOptions());
+                services.AddSingleton<SelfServiceApiClient>();
                 services.AddSingleton<ServerDiscoveryService>();
                 services.AddSingleton<OperatorAuthService>();
                 services.AddSingleton<OperationsApiClient>();
+                services.AddSingleton<PlayerApiClient>();
+                services.AddSingleton<ProfileWindowService>();
                 services.AddSingleton<StartupViewModel>();
                 services.AddSingleton<StartupSequenceRunner>();
                 services.AddSingleton<BettingRealtimeClient>();
@@ -43,8 +47,10 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<MarketEditorWindowService>();
                 services.AddSingleton<ConfirmationDialogService>();
                 services.AddSingleton<MainViewModel>();
+                services.AddSingleton<PlayerMainViewModel>();
                 services.AddSingleton<StartupWindow>();
                 services.AddSingleton<MainWindow>();
+                services.AddSingleton<PlayerWindow>();
             })
             .Build();
 
@@ -53,7 +59,7 @@ public partial class App : System.Windows.Application
 
         var startupViewModel = host.Services.GetRequiredService<StartupViewModel>();
         var startupSequenceRunner = host.Services.GetRequiredService<StartupSequenceRunner>();
-        mainViewModel = host.Services.GetRequiredService<MainViewModel>();
+        var shellModeContext = host.Services.GetRequiredService<ShellModeContext>();
 
         try
         {
@@ -87,10 +93,22 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        var mainWindow = host.Services.GetRequiredService<MainWindow>();
-        MainWindow = mainWindow;
-        mainWindow.Show();
-        await mainWindow.PlayEntranceTransitionAsync();
+        if (shellModeContext.CurrentMode == AppShellMode.Player)
+        {
+            mainViewModel = host.Services.GetRequiredService<PlayerMainViewModel>();
+            var playerWindow = host.Services.GetRequiredService<PlayerWindow>();
+            playerWindow.DataContext = mainViewModel;
+            MainWindow = playerWindow;
+            playerWindow.Show();
+        }
+        else
+        {
+            mainViewModel = host.Services.GetRequiredService<MainViewModel>();
+            var mainWindow = host.Services.GetRequiredService<MainWindow>();
+            MainWindow = mainWindow;
+            mainWindow.Show();
+            await mainWindow.PlayEntranceTransitionAsync();
+        }
 
         if (startupWindow is not null)
         {

@@ -14,7 +14,7 @@ public sealed class OperatorAuthOptions
         "http://127.0.0.1:5103"
     ];
 
-    public string ClientId { get; init; } = "d3bet-wpf-dev";
+    public string ClientId { get; init; } = "d3bet-wpf";
 
     public string RedirectUri { get; init; } = "http://127.0.0.1:43123/callback/";
 

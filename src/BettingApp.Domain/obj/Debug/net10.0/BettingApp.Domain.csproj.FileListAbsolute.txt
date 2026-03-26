@@ -9,3 +9,15 @@ C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Domain\
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Domain\obj\Debug\net10.0\refint\BettingApp.Domain.dll
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Domain\obj\Debug\net10.0\BettingApp.Domain.pdb
 C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Domain\obj\Debug\net10.0\ref\BettingApp.Domain.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\bin\Debug\net10.0\BettingApp.Domain.deps.json
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\bin\Debug\net10.0\BettingApp.Domain.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\bin\Debug\net10.0\BettingApp.Domain.pdb
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\obj\Debug\net10.0\BettingApp.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\obj\Debug\net10.0\BettingApp.Domain.AssemblyInfoInputs.cache
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\obj\Debug\net10.0\BettingApp.Domain.AssemblyInfo.cs
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\obj\Debug\net10.0\BettingApp.Domain.csproj.CoreCompileInputs.cache
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\obj\Debug\net10.0\BettingApp.Domain.sourcelink.json
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\obj\Debug\net10.0\BettingApp.Domain.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\obj\Debug\net10.0\refint\BettingApp.Domain.dll
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\obj\Debug\net10.0\BettingApp.Domain.pdb
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Domain\obj\Debug\net10.0\ref\BettingApp.Domain.dll

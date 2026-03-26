@@ -14,12 +14,16 @@ public sealed class BetEditorViewModel : ObservableObject
     private string eventNamePreview = string.Empty;
     private string oddsPreview = string.Empty;
     private string stake = string.Empty;
+    private string walletBalance = "Peněženka se načítá.";
+    private string quoteSummary = "Zadejte sázku v D3Kreditu a vyberte událost.";
+    private string topUpAmount = "100";
     private bool isCommissionFeePaid;
 
-    public BetEditorViewModel(Func<Task> saveAsync, Func<Task> cancelAsync)
+    public BetEditorViewModel(Func<Task> saveAsync, Func<Task> cancelAsync, Func<Task> topUpAsync)
     {
         SaveCommand = new AsyncRelayCommand(saveAsync);
         CancelEditCommand = new AsyncRelayCommand(cancelAsync);
+        TopUpWalletCommand = new AsyncRelayCommand(topUpAsync);
     }
 
     public ObservableCollection<BettorOptionViewModel> Bettors { get; } = new();
@@ -71,6 +75,24 @@ public sealed class BetEditorViewModel : ObservableObject
         set => SetProperty(ref stake, value);
     }
 
+    public string WalletBalance
+    {
+        get => walletBalance;
+        set => SetProperty(ref walletBalance, value);
+    }
+
+    public string QuoteSummary
+    {
+        get => quoteSummary;
+        set => SetProperty(ref quoteSummary, value);
+    }
+
+    public string TopUpAmount
+    {
+        get => topUpAmount;
+        set => SetProperty(ref topUpAmount, value);
+    }
+
     public bool IsCommissionFeePaid
     {
         get => isCommissionFeePaid;
@@ -105,6 +127,8 @@ public sealed class BetEditorViewModel : ObservableObject
     public AsyncRelayCommand SaveCommand { get; }
 
     public AsyncRelayCommand CancelEditCommand { get; }
+
+    public AsyncRelayCommand TopUpWalletCommand { get; }
 
     public void SetBettors(IEnumerable<BettorOptionViewModel> bettors)
     {

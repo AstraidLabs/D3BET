@@ -10,6 +10,14 @@ public sealed class Bet
 
     public decimal Stake { get; set; }
 
+    public string StakeCurrencyCode { get; set; } = "CZK";
+
+    public decimal StakeRealMoneyEquivalent { get; set; }
+
+    public decimal CreditToMoneyRateApplied { get; set; } = 1m;
+
+    public decimal MarketParticipationMultiplierApplied { get; set; } = 1m;
+
     public bool IsWinning { get; set; }
 
     public BetOutcomeStatus OutcomeStatus { get; set; } = BetOutcomeStatus.Pending;

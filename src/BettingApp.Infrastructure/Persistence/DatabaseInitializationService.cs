@@ -6,8 +6,7 @@ namespace BettingApp.Infrastructure.Persistence;
 
 public sealed class DatabaseInitializationService(BettingDbContext dbContext)
 {
-    private const string InitialMigrationId = "20260320000100_InitialCreate";
-    private const string BettingMarketsMigrationId = "20260320000400_AddBettingMarkets";
+    private const string CurrentBaselineMigrationId = "20260326105439_InitialCreate";
     private const string EfProductVersion = "10.0.5";
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
@@ -26,21 +25,27 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
             await connection.OpenAsync(cancellationToken);
         }
 
-        if (await HasMigrationHistoryTableAsync(connection, cancellationToken))
+        var hasMigrationHistoryTable = await HasMigrationHistoryTableAsync(connection, cancellationToken);
+        var hasLegacyTables = await HasLegacyTablesAsync(connection, cancellationToken);
+        if (!hasLegacyTables)
         {
             return;
         }
 
-        if (!await HasLegacyTablesAsync(connection, cancellationToken))
+        if (!hasMigrationHistoryTable)
         {
-            return;
+            await EnsureMigrationHistoryTableAsync(connection, cancellationToken);
         }
 
         await EnsureWinningColumnAsync(connection, cancellationToken);
         await EnsureCommissionFeePaidColumnAsync(connection, cancellationToken);
-        await EnsureMigrationHistoryTableAsync(connection, cancellationToken);
-        await EnsureInitialMigrationHistoryRowAsync(connection, cancellationToken);
-        await EnsureMigrationHistoryRowAsync(connection, BettingMarketsMigrationId, cancellationToken);
+        await EnsureOutcomeStatusColumnAsync(connection, cancellationToken);
+        await EnsureBettingMarketsTableAsync(connection, cancellationToken);
+        await EnsureBettingMarketIdColumnAsync(connection, cancellationToken);
+        await EnsureD3CreditColumnsAsync(connection, cancellationToken);
+        await EnsureBettorWalletsTableAsync(connection, cancellationToken);
+        await EnsureD3CreditTransactionsTableAsync(connection, cancellationToken);
+        await EnsureMigrationHistoryRowAsync(connection, CurrentBaselineMigrationId, cancellationToken);
     }
 
     private async Task EnsureSchemaCompatibilityAsync(CancellationToken cancellationToken)
@@ -56,6 +61,9 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
         await EnsureOutcomeStatusColumnAsync(connection, cancellationToken);
         await EnsureCommissionFeePaidColumnAsync(connection, cancellationToken);
         await EnsureBettingMarketIdColumnAsync(connection, cancellationToken);
+        await EnsureD3CreditColumnsAsync(connection, cancellationToken);
+        await EnsureBettorWalletsTableAsync(connection, cancellationToken);
+        await EnsureD3CreditTransactionsTableAsync(connection, cancellationToken);
         await BackfillBettingMarketsAsync(connection, cancellationToken);
     }
 
@@ -341,11 +349,6 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private static async Task EnsureInitialMigrationHistoryRowAsync(SqliteConnection connection, CancellationToken cancellationToken)
-    {
-        await EnsureMigrationHistoryRowAsync(connection, InitialMigrationId, cancellationToken);
-    }
-
     private static async Task EnsureMigrationHistoryRowAsync(SqliteConnection connection, string migrationId, CancellationToken cancellationToken)
     {
         await using var existsCommand = connection.CreateCommand();
@@ -370,5 +373,91 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
         insertCommand.Parameters.AddWithValue("$migrationId", migrationId);
         insertCommand.Parameters.AddWithValue("$productVersion", EfProductVersion);
         await insertCommand.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task EnsureD3CreditColumnsAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        if (!await HasTableAsync(connection, "Bets", cancellationToken))
+        {
+            return;
+        }
+
+        await EnsureColumnAsync(connection, "Bets", "StakeCurrencyCode", "ALTER TABLE Bets ADD COLUMN StakeCurrencyCode TEXT NOT NULL DEFAULT 'CZK';", cancellationToken);
+        await EnsureColumnAsync(connection, "Bets", "StakeRealMoneyEquivalent", "ALTER TABLE Bets ADD COLUMN StakeRealMoneyEquivalent TEXT NOT NULL DEFAULT 0.0;", cancellationToken);
+        await EnsureColumnAsync(connection, "Bets", "CreditToMoneyRateApplied", "ALTER TABLE Bets ADD COLUMN CreditToMoneyRateApplied TEXT NOT NULL DEFAULT 1.0;", cancellationToken);
+        await EnsureColumnAsync(connection, "Bets", "MarketParticipationMultiplierApplied", "ALTER TABLE Bets ADD COLUMN MarketParticipationMultiplierApplied TEXT NOT NULL DEFAULT 1.0;", cancellationToken);
+    }
+
+    private static async Task EnsureBettorWalletsTableAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS "BettorWallets" (
+                "BettorId" TEXT NOT NULL CONSTRAINT "PK_BettorWallets" PRIMARY KEY,
+                "Balance" TEXT NOT NULL,
+                "CreditCode" TEXT NOT NULL,
+                "LastMoneyToCreditRate" TEXT NOT NULL,
+                "LastCreditToMoneyRate" TEXT NOT NULL,
+                "CreatedAtUtc" TEXT NOT NULL,
+                "UpdatedAtUtc" TEXT NOT NULL,
+                CONSTRAINT "FK_BettorWallets_Bettors_BettorId" FOREIGN KEY ("BettorId") REFERENCES "Bettors" ("Id") ON DELETE CASCADE
+            );
+            """;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task EnsureD3CreditTransactionsTableAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS "D3CreditTransactions" (
+                "Id" TEXT NOT NULL CONSTRAINT "PK_D3CreditTransactions" PRIMARY KEY,
+                "BettorId" TEXT NOT NULL,
+                "Type" INTEGER NOT NULL,
+                "CreditAmount" TEXT NOT NULL,
+                "RealMoneyAmount" TEXT NOT NULL,
+                "RealCurrencyCode" TEXT NOT NULL,
+                "MoneyToCreditRate" TEXT NOT NULL,
+                "CreditToMoneyRate" TEXT NOT NULL,
+                "MarketParticipationMultiplier" TEXT NOT NULL,
+                "Reference" TEXT NOT NULL,
+                "Description" TEXT NOT NULL,
+                "CreatedAtUtc" TEXT NOT NULL,
+                CONSTRAINT "FK_D3CreditTransactions_Bettors_BettorId" FOREIGN KEY ("BettorId") REFERENCES "Bettors" ("Id") ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS "IX_D3CreditTransactions_BettorId_CreatedAtUtc" ON "D3CreditTransactions" ("BettorId", "CreatedAtUtc");
+            """;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task EnsureColumnAsync(
+        SqliteConnection connection,
+        string tableName,
+        string columnName,
+        string alterSql,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info('{tableName}');";
+
+        var hasColumn = false;
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                hasColumn = true;
+                break;
+            }
+        }
+
+        if (hasColumn)
+        {
+            return;
+        }
+
+        await using var alterCommand = connection.CreateCommand();
+        alterCommand.CommandText = alterSql;
+        await alterCommand.ExecuteNonQueryAsync(cancellationToken);
     }
 }

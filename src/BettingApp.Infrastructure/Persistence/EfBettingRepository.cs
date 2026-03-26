@@ -46,6 +46,8 @@ public sealed class EfBettingRepository(BettingDbContext dbContext) : IBettingRe
                 x.EventName,
                 x.Odds,
                 x.Stake,
+                x.StakeCurrencyCode,
+                x.StakeRealMoneyEquivalent,
                 x.IsWinning,
                 x.OutcomeStatus,
                 x.IsCommissionFeePaid,

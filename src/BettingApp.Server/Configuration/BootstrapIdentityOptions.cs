@@ -4,6 +4,12 @@ public sealed class BootstrapIdentityOptions
 {
     public const string SectionName = "Identity:Bootstrap";
 
+    public BootstrapUserOptions Player { get; set; } = new()
+    {
+        UserName = "player",
+        Password = "Player1234"
+    };
+
     public BootstrapUserOptions Admin { get; set; } = new()
     {
         UserName = "admin",

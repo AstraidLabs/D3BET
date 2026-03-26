@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "Cxb43ikpOeg=",
+  "dgSpecHash": "3TbyWuAUJJQ=",
   "success": true,
-  "projectFilePath": "C:\\Users\\tvanek\\OneDrive - Seyfor\\Dokumenty\\New project 2\\src\\BettingApp.Infrastructure\\BettingApp.Infrastructure.csproj",
+  "projectFilePath": "C:\\Users\\tvanek\\source\\repos\\D3BET\\src\\BettingApp.Infrastructure\\BettingApp.Infrastructure.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\tvanek\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\tvanek\\.nuget\\packages\\mediatr\\14.1.0\\mediatr.14.1.0.nupkg.sha512",

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "uLH0iYIy08c=",
+  "dgSpecHash": "OSbS1MJhDnc=",
   "success": true,
-  "projectFilePath": "C:\\Users\\tvanek\\OneDrive - Seyfor\\Dokumenty\\New project 2\\src\\BettingApp.Wpf\\BettingApp.Wpf.csproj",
+  "projectFilePath": "C:\\Users\\tvanek\\source\\repos\\D3BET\\src\\BettingApp.Wpf\\BettingApp.Wpf.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\tvanek\\.nuget\\packages\\mediatr\\14.1.0\\mediatr.14.1.0.nupkg.sha512",
     "C:\\Users\\tvanek\\.nuget\\packages\\mediatr.contracts\\2.0.1\\mediatr.contracts.2.0.1.nupkg.sha512",

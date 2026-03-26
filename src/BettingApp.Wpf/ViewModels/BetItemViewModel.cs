@@ -19,6 +19,10 @@ public sealed class BetItemViewModel
 
     public decimal Stake { get; init; }
 
+    public string StakeCurrencyCode { get; init; } = string.Empty;
+
+    public decimal StakeRealMoneyEquivalent { get; init; }
+
     public bool IsWinning { get; init; }
 
     public BetOutcomeStatus OutcomeStatus { get; init; }

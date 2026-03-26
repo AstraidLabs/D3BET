@@ -1,15 +1,16 @@
-using System.Diagnostics;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Windows;
+using BettingApp.Wpf.ViewModels;
+using BettingApp.Wpf.Views;
 
 namespace BettingApp.Wpf.Services;
 
 public sealed class OperatorAuthService(
     OperatorAuthOptions options,
+    SelfServiceApiClient selfServiceApiClient,
     OperatorSessionStore sessionStore,
     OperatorSessionContext sessionContext)
 {
@@ -80,46 +81,86 @@ public sealed class OperatorAuthService(
         return await EnsureAuthenticatedAsync(cancellationToken);
     }
 
-    private async Task<OperatorSessionData> LoginInteractiveAsync(CancellationToken cancellationToken)
+    public async Task<OperatorSessionData> RefreshCurrentSessionAsync(CancellationToken cancellationToken)
     {
-        var state = Guid.NewGuid().ToString("N");
-        var codeVerifier = CreateCodeVerifier();
-        var codeChallenge = CreateCodeChallenge(codeVerifier);
-        var authorizeUrl = BuildAuthorizeUrl(state, codeChallenge);
+        var current = sessionContext.CurrentSession ?? await sessionStore.LoadAsync();
+        if (current is null)
+        {
+            throw new InvalidOperationException("Není k dispozici aktivní relace k obnovení profilu.");
+        }
 
-        using var listener = CreateListener();
-        listener.Start();
+        var refreshed = await LoadProfileAsync(current.AccessToken, current.RefreshToken, current.ExpiresAtUtc, cancellationToken);
+        sessionContext.Set(refreshed);
+        await sessionStore.SaveAsync(refreshed);
+        return refreshed;
+    }
 
-        OpenBrowser(authorizeUrl);
-
-        var callbackContext = await listener.GetContextAsync().WaitAsync(cancellationToken);
+    public async Task<OperatorSessionData?> TryRefreshSessionSilentlyAsync(CancellationToken cancellationToken)
+    {
+        await sessionSemaphore.WaitAsync(cancellationToken);
         try
         {
-            var query = callbackContext.Request.QueryString;
-            if (!string.Equals(query["state"], state, StringComparison.Ordinal))
+            var current = sessionContext.CurrentSession ?? await sessionStore.LoadAsync();
+            if (current is null)
             {
-                throw new InvalidOperationException("Přihlášení bylo přerušeno, protože se neshoduje bezpečnostní stav požadavku.");
+                return null;
             }
 
-            var error = query["error"];
-            if (!string.IsNullOrWhiteSpace(error))
+            var validated = await TryLoadProfileAsync(current.AccessToken, current.RefreshToken, current.ExpiresAtUtc, cancellationToken);
+            if (validated is not null)
             {
-                throw new InvalidOperationException($"OAuth přihlášení selhalo: {error}");
+                sessionContext.Set(validated);
+                await sessionStore.SaveAsync(validated);
+                return validated;
             }
 
-            var code = query["code"];
-            if (string.IsNullOrWhiteSpace(code))
+            if (string.IsNullOrWhiteSpace(current.RefreshToken))
             {
-                throw new InvalidOperationException("OAuth server nevrátil autorizační kód.");
+                return null;
             }
 
-            await WriteBrowserResponseAsync(callbackContext.Response, "Přihlášení bylo úspěšné. Můžete zavřít toto okno a vrátit se do D3Bet.");
-            return await ExchangeAuthorizationCodeAsync(code, codeVerifier, cancellationToken);
+            try
+            {
+                var refreshed = await RefreshAsync(current.RefreshToken, cancellationToken);
+                sessionContext.Set(refreshed);
+                await sessionStore.SaveAsync(refreshed);
+                return refreshed;
+            }
+            catch
+            {
+                return null;
+            }
         }
         finally
         {
-            listener.Stop();
+            sessionSemaphore.Release();
         }
+    }
+
+    private async Task<OperatorSessionData> LoginInteractiveAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var dialog = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            var viewModel = new LoginViewModel(selfServiceApiClient, AuthenticateWithPasswordAsync);
+            var window = new LoginWindow(viewModel);
+            var owner = System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(window => window.IsActive);
+            if (owner is not null)
+            {
+                window.Owner = owner;
+            }
+
+            return window;
+        });
+
+        var dialogResult = await System.Windows.Application.Current.Dispatcher.InvokeAsync(dialog.ShowDialog);
+        if (dialogResult != true || dialog.ViewModel.AuthenticatedSession is null)
+        {
+            throw new InvalidOperationException("Přihlášení bylo zrušeno.");
+        }
+
+        return dialog.ViewModel.AuthenticatedSession;
     }
 
     private async Task<OperatorSessionData> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
@@ -140,17 +181,17 @@ public sealed class OperatorAuthService(
         return await CreateSessionAsync(tokenResponse, cancellationToken);
     }
 
-    private async Task<OperatorSessionData> ExchangeAuthorizationCodeAsync(string code, string codeVerifier, CancellationToken cancellationToken)
+    private async Task<OperatorSessionData> AuthenticateWithPasswordAsync(string userName, string password, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{options.ServerBaseUrl.TrimEnd('/')}/connect/token")
         {
             Content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
-                ["grant_type"] = "authorization_code",
+                ["grant_type"] = "password",
                 ["client_id"] = options.ClientId,
-                ["code"] = code,
-                ["redirect_uri"] = options.RedirectUri,
-                ["code_verifier"] = codeVerifier
+                ["username"] = userName,
+                ["password"] = password,
+                ["scope"] = options.Scope
             })
         };
 
@@ -206,85 +247,6 @@ public sealed class OperatorAuthService(
         };
     }
 
-    private string BuildAuthorizeUrl(string state, string codeChallenge)
-    {
-        var query = new Dictionary<string, string>
-        {
-            ["client_id"] = options.ClientId,
-            ["response_type"] = "code",
-            ["redirect_uri"] = options.RedirectUri,
-            ["scope"] = options.Scope,
-            ["state"] = state,
-            ["code_challenge"] = codeChallenge,
-            ["code_challenge_method"] = "S256"
-        };
-
-        var queryString = string.Join("&", query.Select(pair =>
-            $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}"));
-
-        return $"{options.ServerBaseUrl.TrimEnd('/')}/connect/authorize?{queryString}";
-    }
-
-    private HttpListener CreateListener()
-    {
-        var listener = new HttpListener();
-        listener.Prefixes.Add(options.RedirectUri);
-        return listener;
-    }
-
-    private static void OpenBrowser(string url)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = url,
-            UseShellExecute = true
-        };
-
-        Process.Start(startInfo);
-    }
-
-    private static async Task WriteBrowserResponseAsync(HttpListenerResponse response, string message)
-    {
-        var bytes = Encoding.UTF8.GetBytes($"""
-            <!DOCTYPE html>
-            <html lang="cs">
-            <head><meta charset="utf-8"><title>D3Bet Přihlášení</title></head>
-            <body style="font-family:Segoe UI,Arial,sans-serif;background:#08111f;color:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">
-                <div style="max-width:480px;padding:28px;border-radius:20px;background:#0f172a;border:1px solid #334155;">
-                    <div style="font-size:14px;font-weight:700;color:#f97316;">D3BET</div>
-                    <h1 style="margin:10px 0 8px;">Přihlášení dokončeno</h1>
-                    <p style="margin:0;color:#a7b6ca;line-height:1.6;">{WebUtility.HtmlEncode(message)}</p>
-                </div>
-            </body>
-            </html>
-            """);
-
-        response.ContentType = "text/html; charset=utf-8";
-        response.ContentLength64 = bytes.Length;
-        await response.OutputStream.WriteAsync(bytes);
-        response.OutputStream.Close();
-    }
-
-    private static string CreateCodeVerifier()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(32);
-        return Base64UrlEncode(bytes);
-    }
-
-    private static string CreateCodeChallenge(string codeVerifier)
-    {
-        var hash = SHA256.HashData(Encoding.ASCII.GetBytes(codeVerifier));
-        return Base64UrlEncode(hash);
-    }
-
-    private static string Base64UrlEncode(byte[] bytes)
-    {
-        return Convert.ToBase64String(bytes)
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
-    }
-
     private static async Task<T> DeserializeAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -294,10 +256,13 @@ public sealed class OperatorAuthService(
 
     private sealed class TokenResponse
     {
+        [JsonPropertyName("access_token")]
         public string AccessToken { get; set; } = string.Empty;
 
+        [JsonPropertyName("refresh_token")]
         public string? RefreshToken { get; set; }
 
+        [JsonPropertyName("expires_in")]
         public int ExpiresIn { get; set; }
     }
 

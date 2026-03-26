@@ -127,6 +127,122 @@ public sealed class OperationsApiClient(
         using var response = await SendAsync(request, cancellationToken);
     }
 
+    public async Task<D3CreditWalletResponse> GetD3CreditWalletAsync(Guid bettorId, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/operations/d3credit/wallets/{bettorId}");
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<D3CreditWalletResponse>(response, cancellationToken);
+    }
+
+    public async Task<D3CreditTopUpResponse> TopUpD3CreditAsync(Guid? bettorId, string? bettorName, decimal realMoneyAmount, string currencyCode = "CZK", CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/operations/d3credit/topups/test", JsonContent.Create(new
+        {
+            bettorId,
+            bettorName,
+            realMoneyAmount,
+            currencyCode
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<D3CreditTopUpResponse>(response, cancellationToken);
+    }
+
+    public async Task<D3CreditQuoteResponse> GetD3CreditQuoteAsync(Guid marketId, decimal creditStake, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/d3credit/markets/{marketId}/quote", JsonContent.Create(new
+        {
+            creditStake
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<D3CreditQuoteResponse>(response, cancellationToken);
+    }
+
+    public async Task<D3CreditBetPlacementResponse> CreateCreditBetAsync(Guid marketId, Guid? bettorId, string? bettorName, decimal creditStake, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/d3credit/markets/{marketId}/bets", JsonContent.Create(new
+        {
+            bettorId,
+            bettorName,
+            creditStake
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<D3CreditBetPlacementResponse>(response, cancellationToken);
+    }
+
+    public async Task<D3CreditBetPlacementResponse> UpdateCreditBetAsync(Guid betId, Guid marketId, Guid? bettorId, string? bettorName, decimal creditStake, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Put, $"/api/operations/d3credit/bets/{betId}?marketId={marketId}", JsonContent.Create(new
+        {
+            bettorId,
+            bettorName,
+            creditStake
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<D3CreditBetPlacementResponse>(response, cancellationToken);
+    }
+
+    public async Task<D3CreditAdminSettingsResponse> GetD3CreditAdminSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Get, "/api/operations/d3credit/admin/settings");
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<D3CreditAdminSettingsResponse>(response, cancellationToken);
+    }
+
+    public async Task<D3CreditAdminSettingsResponse> SaveD3CreditAdminSettingsAsync(D3CreditAdminSettingsResponse settings, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Put, "/api/operations/d3credit/admin/settings", JsonContent.Create(settings));
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<D3CreditAdminSettingsResponse>(response, cancellationToken);
+    }
+
+    public async Task<List<D3CreditAdminWalletListItemResponse>> GetD3CreditAdminWalletsAsync(string? search = null, int limit = 80, CancellationToken cancellationToken = default)
+    {
+        var encodedSearch = string.IsNullOrWhiteSpace(search) ? string.Empty : $"&search={Uri.EscapeDataString(search.Trim())}";
+        using var request = CreateRequest(HttpMethod.Get, $"/api/operations/d3credit/admin/wallets?limit={limit}{encodedSearch}");
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<List<D3CreditAdminWalletListItemResponse>>(response, cancellationToken);
+    }
+
+    public async Task<List<D3CreditAdminTransactionResponse>> GetD3CreditAdminTransactionsAsync(string? search = null, int limit = 120, CancellationToken cancellationToken = default)
+    {
+        var encodedSearch = string.IsNullOrWhiteSpace(search) ? string.Empty : $"&search={Uri.EscapeDataString(search.Trim())}";
+        using var request = CreateRequest(HttpMethod.Get, $"/api/operations/d3credit/admin/transactions?limit={limit}{encodedSearch}");
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<List<D3CreditAdminTransactionResponse>>(response, cancellationToken);
+    }
+
+    public async Task<D3CreditWalletResponse> ApplyD3CreditManualAdjustmentAsync(Guid? bettorId, string? bettorName, decimal creditAmount, decimal? realMoneyAmount, string? currencyCode, string reason, string? reference, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/operations/d3credit/admin/adjustments", JsonContent.Create(new
+        {
+            bettorId,
+            bettorName,
+            creditAmount,
+            realMoneyAmount,
+            currencyCode,
+            reason,
+            reference
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<D3CreditWalletResponse>(response, cancellationToken);
+    }
+
+    public async Task<D3CreditWalletResponse> RefundD3CreditBetAsync(Guid betId, string reason, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/d3credit/admin/bets/{betId}/refund", JsonContent.Create(new
+        {
+            reason
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<D3CreditWalletResponse>(response, cancellationToken);
+    }
+
     private HttpRequestMessage CreateRequest(HttpMethod method, string relativeUrl, HttpContent? content = null)
     {
         var request = new HttpRequestMessage(method, $"{authOptions.ServerBaseUrl.TrimEnd('/')}{relativeUrl}");
@@ -150,13 +266,22 @@ public sealed class OperationsApiClient(
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 response.Dispose();
-                using var retryRequest = await CloneRequestAsync(request, cancellationToken);
-                var refreshedSession = await operatorAuthService.ForceReauthenticateAsync(cancellationToken);
-                retryRequest.Headers.Authorization = new AuthenticationHeaderValue(
-                    "Bearer",
-                    refreshedSession.AccessToken);
+                var refreshedSession = await operatorAuthService.TryRefreshSessionSilentlyAsync(cancellationToken);
+                if (refreshedSession is not null)
+                {
+                    using var retryRequest = await CloneRequestAsync(request, cancellationToken);
+                    retryRequest.Headers.Authorization = new AuthenticationHeaderValue(
+                        "Bearer",
+                        refreshedSession.AccessToken);
 
-                response = await httpClient.SendAsync(retryRequest, cancellationToken);
+                    response = await httpClient.SendAsync(retryRequest, cancellationToken);
+                }
+                else
+                {
+                    throw new ApiClientException(
+                        "Přihlášení už není platné. Obnovte prosím relaci a zkuste akci znovu.",
+                        HttpStatusCode.Unauthorized);
+                }
             }
 
             if (response.IsSuccessStatusCode)
@@ -390,5 +515,188 @@ public sealed class OperationsApiClient(
         public string TraceId { get; set; } = string.Empty;
 
         public string? DetailJson { get; set; }
+    }
+
+    public sealed class D3CreditWalletResponse
+    {
+        public Guid BettorId { get; set; }
+
+        public string BettorName { get; set; } = string.Empty;
+
+        public string CreditCode { get; set; } = "D3Kredit";
+
+        public decimal Balance { get; set; }
+
+        public decimal LastMoneyToCreditRate { get; set; }
+
+        public decimal LastCreditToMoneyRate { get; set; }
+
+        public List<D3CreditTransactionResponse> Transactions { get; set; } = [];
+    }
+
+    public sealed class D3CreditTransactionResponse
+    {
+        public Guid Id { get; set; }
+
+        public D3CreditTransactionType Type { get; set; }
+
+        public decimal CreditAmount { get; set; }
+
+        public decimal RealMoneyAmount { get; set; }
+
+        public string RealCurrencyCode { get; set; } = string.Empty;
+
+        public string Description { get; set; } = string.Empty;
+
+        public DateTime CreatedAtUtc { get; set; }
+    }
+
+    public sealed class D3CreditTopUpResponse
+    {
+        public string PaymentGateway { get; set; } = string.Empty;
+
+        public string PaymentReference { get; set; } = string.Empty;
+
+        public string CreditCode { get; set; } = string.Empty;
+
+        public decimal NewBalance { get; set; }
+
+        public decimal AddedCredits { get; set; }
+
+        public decimal RealMoneyAmount { get; set; }
+
+        public string CurrencyCode { get; set; } = string.Empty;
+
+        public decimal MoneyToCreditRate { get; set; }
+    }
+
+    public sealed class D3CreditQuoteResponse
+    {
+        public Guid MarketId { get; set; }
+
+        public string EventName { get; set; } = string.Empty;
+
+        public string CreditCode { get; set; } = "D3Kredit";
+
+        public string RealCurrencyCode { get; set; } = "CZK";
+
+        public decimal MoneyToCreditRate { get; set; }
+
+        public decimal CreditToMoneyRate { get; set; }
+
+        public decimal MarketParticipationMultiplier { get; set; }
+
+        public decimal RealMoneyAmount { get; set; }
+
+        public decimal CreditAmount { get; set; }
+
+        public decimal PotentialPayoutCredits { get; set; }
+
+        public decimal PotentialPayoutRealMoney { get; set; }
+    }
+
+    public sealed class D3CreditBetPlacementResponse
+    {
+        public decimal AppliedOdds { get; set; }
+
+        public D3CreditWalletResponse Wallet { get; set; } = new();
+
+        public D3CreditQuoteResponse Quote { get; set; } = new();
+    }
+
+    public sealed class D3CreditAdminSettingsResponse
+    {
+        public string CreditCode { get; set; } = "D3Kredit";
+
+        public string BaseCurrencyCode { get; set; } = "CZK";
+
+        public decimal BaseCreditsPerCurrencyUnit { get; set; }
+
+        public decimal BaseCurrencyUnitsPerCredit { get; set; }
+
+        public int LowParticipationThreshold { get; set; }
+
+        public decimal LowParticipationBoostPercent { get; set; }
+
+        public int HighParticipationThreshold { get; set; }
+
+        public decimal HighParticipationReductionPercent { get; set; }
+
+        public decimal TotalStakePressureDivisor { get; set; }
+
+        public decimal MaxPressureReductionPercent { get; set; }
+
+        public decimal OddsVolatilityWeightPercent { get; set; }
+
+        public bool EnableTestTopUpGateway { get; set; }
+
+        public bool EnableManualCreditAdjustments { get; set; }
+
+        public bool EnableManualBetRefunds { get; set; }
+
+        public decimal DefaultTopUpAmount { get; set; }
+
+        public List<D3CreditMarketAdminRuleResponse> MarketRules { get; set; } = [];
+    }
+
+    public sealed class D3CreditMarketAdminRuleResponse
+    {
+        public Guid MarketId { get; set; }
+
+        public bool IsEnabled { get; set; }
+
+        public decimal AdditionalMultiplierPercent { get; set; }
+
+        public decimal? OverrideMoneyToCreditRate { get; set; }
+
+        public decimal? OverrideCreditToMoneyRate { get; set; }
+
+        public string? Note { get; set; }
+    }
+
+    public sealed class D3CreditAdminWalletListItemResponse
+    {
+        public Guid BettorId { get; set; }
+
+        public string BettorName { get; set; } = string.Empty;
+
+        public string CreditCode { get; set; } = string.Empty;
+
+        public decimal Balance { get; set; }
+
+        public decimal LastMoneyToCreditRate { get; set; }
+
+        public decimal LastCreditToMoneyRate { get; set; }
+
+        public DateTime UpdatedAtUtc { get; set; }
+    }
+
+    public sealed class D3CreditAdminTransactionResponse
+    {
+        public Guid Id { get; set; }
+
+        public Guid BettorId { get; set; }
+
+        public string BettorName { get; set; } = string.Empty;
+
+        public D3CreditTransactionType Type { get; set; }
+
+        public decimal CreditAmount { get; set; }
+
+        public decimal RealMoneyAmount { get; set; }
+
+        public string RealCurrencyCode { get; set; } = string.Empty;
+
+        public decimal MoneyToCreditRate { get; set; }
+
+        public decimal CreditToMoneyRate { get; set; }
+
+        public decimal MarketParticipationMultiplier { get; set; }
+
+        public string Reference { get; set; } = string.Empty;
+
+        public string Description { get; set; } = string.Empty;
+
+        public DateTime CreatedAtUtc { get; set; }
     }
 }

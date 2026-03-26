@@ -241,6 +241,8 @@
             <Setter Property="BorderBrush" Value="#334155" />
         </Style>
 
+        <Style x:Key="SecondaryActionButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyleLocal}" />
+
         <Style x:Key="TicketActionButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="110" />
             <Setter Property="Height" Value="32" />
@@ -310,6 +312,15 @@
                                 <TextBlock FontSize="12" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding CurrentOperatorRolesDisplay}" />
                             </StackPanel>
                         </Border>
+                        <Button Width="138"
+                                Height="42"
+                                Margin="0,0,10,0"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource SecondaryButtonStyleLocal}"
+                                MouseEnter="ActionButtonMouseEnter"
+                                MouseLeave="ActionButtonMouseLeave"
+                                Command="{Binding OpenProfileCommand}"
+                                Content="Můj profil" />
                         <Button Width="138"
                                 Height="42"
                                 Margin="0,0,10,0"
@@ -941,6 +952,232 @@
                                 </StackPanel>
                             </StackPanel>
                         </Border>
+                    </TabItem>
+
+                    <TabItem Header="D3Kredit Admin"
+                             Style="{StaticResource TabItemStyleLocal}"
+                             Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.2*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" Margin="0,0,12,0" Style="{StaticResource CardStyle}" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <DockPanel LastChildFill="False">
+                                            <StackPanel DockPanel.Dock="Left">
+                                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Kurzovní a burzovní model" />
+                                                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="Správa základních kreditních kurzů a pravidel pro jednotlivé trhy." TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <Button DockPanel.Dock="Right" Width="140" Style="{StaticResource SecondaryButtonStyleLocal}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding D3CreditAdmin.RefreshCommand}" Content="Obnovit" />
+                                        </DockPanel>
+
+                                        <WrapPanel Margin="0,16,0,0">
+                                            <StackPanel Width="170" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Kód kreditu" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.CreditCode, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <StackPanel Width="140" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Měna" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.BaseCurrencyCode, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <StackPanel Width="170" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Měna -> kredit" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.BaseCreditsPerCurrencyUnit, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <StackPanel Width="170" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Kredit -> měna" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.BaseCurrencyUnitsPerCredit, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                        </WrapPanel>
+
+                                        <WrapPanel>
+                                            <StackPanel Width="150" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Nízká účast do" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.LowParticipationThreshold, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <StackPanel Width="170" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Boost (%)" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.LowParticipationBoostPercent, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <StackPanel Width="150" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Vysoká účast od" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.HighParticipationThreshold, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <StackPanel Width="170" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Redukce (%)" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.HighParticipationReductionPercent, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                        </WrapPanel>
+
+                                        <WrapPanel>
+                                            <StackPanel Width="170" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Tlak trhu" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.TotalStakePressureDivisor, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <StackPanel Width="170" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Max. redukce (%)" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.MaxPressureReductionPercent, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <StackPanel Width="170" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Volatilita (%)" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.OddsVolatilityWeightPercent, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <StackPanel Width="170" Margin="0,0,12,12">
+                                                <TextBlock Style="{StaticResource LabelStyle}" Text="Výchozí dobití" />
+                                                <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.DefaultTopUpAmount, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                        </WrapPanel>
+
+                                        <CheckBox Style="{StaticResource CheckBoxStyleLocal}" IsChecked="{Binding D3CreditAdmin.EnableTestTopUpGateway}" Content="Povolit testovací top-up" />
+                                        <CheckBox Style="{StaticResource CheckBoxStyleLocal}" IsChecked="{Binding D3CreditAdmin.EnableManualCreditAdjustments}" Content="Povolit ruční kreditní zásahy" />
+                                        <CheckBox Margin="0,0,0,12" Style="{StaticResource CheckBoxStyleLocal}" IsChecked="{Binding D3CreditAdmin.EnableManualBetRefunds}" Content="Povolit refund kreditní sázky" />
+
+                                        <DockPanel Margin="0,12,0,0" LastChildFill="False">
+                                            <TextBlock DockPanel.Dock="Left" Style="{StaticResource SectionTitleStyle}" Text="Pravidla událostí" />
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                <Button Width="120" Style="{StaticResource SecondaryButtonStyleLocal}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding D3CreditAdmin.AddMarketRuleCommand}" Content="Přidat" />
+                                                <Button Width="120" Margin="0" Style="{StaticResource SecondaryButtonStyleLocal}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding D3CreditAdmin.RemoveSelectedMarketRuleCommand}" Content="Odebrat" />
+                                            </StackPanel>
+                                        </DockPanel>
+
+                                        <ListBox Margin="0,16,0,0" Height="260" Background="Transparent" BorderThickness="0" ItemsSource="{Binding D3CreditAdmin.MarketRules}" SelectedItem="{Binding D3CreditAdmin.SelectedMarketRule}">
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="BorderThickness" Value="0" />
+                                                    <Setter Property="Padding" Value="0" />
+                                                    <Setter Property="Margin" Value="0,0,0,10" />
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Padding="14" Background="#0F172ACC" BorderBrush="#2234475E" BorderThickness="1" CornerRadius="16">
+                                                        <StackPanel>
+                                                            <TextBlock FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" Text="{Binding MarketName}" />
+                                                            <CheckBox Margin="0,8,0,0" Style="{StaticResource CheckBoxStyleLocal}" IsChecked="{Binding IsEnabled}" Content="Aktivní pravidlo" />
+                                                            <WrapPanel>
+                                                                <StackPanel Width="160" Margin="0,0,12,12">
+                                                                    <TextBlock Style="{StaticResource LabelStyle}" Text="Multiplier (%)" />
+                                                                    <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding AdditionalMultiplierPercent, UpdateSourceTrigger=PropertyChanged}" />
+                                                                </StackPanel>
+                                                                <StackPanel Width="180" Margin="0,0,12,12">
+                                                                    <TextBlock Style="{StaticResource LabelStyle}" Text="Override M->K" />
+                                                                    <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding OverrideMoneyToCreditRate, UpdateSourceTrigger=PropertyChanged}" />
+                                                                </StackPanel>
+                                                                <StackPanel Width="180" Margin="0,0,12,12">
+                                                                    <TextBlock Style="{StaticResource LabelStyle}" Text="Override K->M" />
+                                                                    <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding OverrideCreditToMoneyRate, UpdateSourceTrigger=PropertyChanged}" />
+                                                                </StackPanel>
+                                                            </WrapPanel>
+                                                            <TextBlock Style="{StaticResource LabelStyle}" Text="Poznámka" />
+                                                            <TextBox Height="62" Padding="12,8" Style="{StaticResource TextBoxStyleLocal}" AcceptsReturn="True" TextWrapping="Wrap" Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+
+                                        <Button Margin="0,14,0,0" Width="220" Style="{StaticResource PrimaryButtonStyleLocal}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding D3CreditAdmin.SaveSettingsCommand}" Content="Uložit D3Kredit" />
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Border>
+
+                            <Grid Grid.Column="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" Style="{StaticResource CardStyle}" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Peněženky a refundy" />
+                                        <TextBox Margin="0,12,0,0" Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.WalletSearchText, UpdateSourceTrigger=PropertyChanged}" />
+                                        <ListBox Margin="0,14,0,0" Height="170" Background="Transparent" BorderThickness="0" ItemsSource="{Binding D3CreditAdmin.Wallets}" SelectedItem="{Binding D3CreditAdmin.SelectedWallet}">
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="BorderThickness" Value="0" />
+                                                    <Setter Property="Padding" Value="0" />
+                                                    <Setter Property="Margin" Value="0,0,0,8" />
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Padding="12" Background="#0F172ACC" BorderBrush="#2234475E" BorderThickness="1" CornerRadius="16">
+                                                        <StackPanel>
+                                                            <TextBlock FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" Text="{Binding BettorName}" />
+                                                            <TextBlock Margin="0,4,0,0" Foreground="{StaticResource AccentBrush}" Text="{Binding BalanceDisplay}" />
+                                                            <TextBlock Margin="0,4,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding RatesDisplay}" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+
+                                        <WrapPanel Margin="0,14,0,0">
+                                            <TextBox Width="140" Margin="0,0,12,12" Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.ManualCreditAmount, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Width="140" Margin="0,0,12,12" Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.ManualRealMoneyAmount, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Width="100" Margin="0,0,0,12" Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.ManualCurrencyCode, UpdateSourceTrigger=PropertyChanged}" />
+                                        </WrapPanel>
+                                        <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.ManualReason, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBox Margin="0,12,0,0" Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.ManualReference, UpdateSourceTrigger=PropertyChanged}" />
+                                        <Button Margin="0,14,0,0" Width="220" Style="{StaticResource PrimaryButtonStyleLocal}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding D3CreditAdmin.ApplyAdjustmentCommand}" Content="Provést zásah" />
+
+                                        <Border Margin="0,18,0,18" Height="1" Background="#2234475E" />
+
+                                        <TextBox Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.RefundBetId, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBox Margin="0,12,0,0" Style="{StaticResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.RefundReason, UpdateSourceTrigger=PropertyChanged}" />
+                                        <Button Margin="0,14,0,0" Width="220" Style="{StaticResource SecondaryButtonStyleLocal}" MouseEnter="ActionButtonMouseEnter" MouseLeave="ActionButtonMouseLeave" Command="{Binding D3CreditAdmin.RefundBetCommand}" Content="Refund sázky" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Row="1" Margin="0,12,0,0" Style="{StaticResource CardStyle}" MouseEnter="ElevatedCardMouseEnter" MouseLeave="ElevatedCardMouseLeave">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="Transakční systém" />
+                                        <ListView Grid.Row="1" Margin="0,16,0,0" Background="Transparent" BorderThickness="0" ItemsSource="{Binding D3CreditAdmin.Transactions}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                            <ListView.ItemContainerStyle>
+                                                <Style TargetType="ListViewItem">
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="BorderThickness" Value="0" />
+                                                    <Setter Property="Padding" Value="0" />
+                                                    <Setter Property="Margin" Value="0,0,0,8" />
+                                                </Style>
+                                            </ListView.ItemContainerStyle>
+                                            <ListView.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Padding="12" Background="#0F172ACC" BorderBrush="#2234475E" BorderThickness="1" CornerRadius="16">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel>
+                                                                <TextBlock FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" Text="{Binding BettorName}" />
+                                                                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding Description}" TextWrapping="Wrap" />
+                                                                <TextBlock Margin="0,4,0,0" Foreground="#93C5FD" Text="{Binding Reference, StringFormat=Ref: {0}}" />
+                                                            </StackPanel>
+                                                            <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                                <TextBlock HorizontalAlignment="Right" Foreground="{StaticResource AccentBrush}" Text="{Binding CreditDisplay}" />
+                                                                <TextBlock Margin="0,4,0,0" HorizontalAlignment="Right" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding MoneyDisplay}" />
+                                                                <TextBlock Margin="0,4,0,0" HorizontalAlignment="Right" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding TypeDisplay}" />
+                                                                <TextBlock Margin="0,4,0,0" HorizontalAlignment="Right" Foreground="#94A3B8" Text="{Binding TimestampDisplay}" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListView.ItemTemplate>
+                                        </ListView>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Grid>
                     </TabItem>
 
                     <TabItem Header="Audit"

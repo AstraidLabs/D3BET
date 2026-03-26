@@ -43,7 +43,7 @@ public sealed class ServerBootstrapHostedService(
     {
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
-        foreach (var roleName in new[] { Roles.Admin, Roles.Operator })
+        foreach (var roleName in new[] { Roles.Admin, Roles.Operator, Roles.Customer })
         {
             if (await roleManager.RoleExistsAsync(roleName))
             {
@@ -62,13 +62,6 @@ public sealed class ServerBootstrapHostedService(
     {
         var applicationManager = services.GetRequiredService<IOpenIddictApplicationManager>();
         var options = kioskOptions.Value;
-
-        var existingApplication = await applicationManager.FindByClientIdAsync(options.ClientId, cancellationToken);
-        if (existingApplication is not null)
-        {
-            return;
-        }
-
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = options.ClientId,
@@ -83,6 +76,13 @@ public sealed class ServerBootstrapHostedService(
             }
         };
 
+        var existingApplication = await applicationManager.FindByClientIdAsync(options.ClientId, cancellationToken);
+        if (existingApplication is not null)
+        {
+            await applicationManager.UpdateAsync(existingApplication, descriptor, cancellationToken);
+            return;
+        }
+
         await applicationManager.CreateAsync(descriptor, cancellationToken);
         logger.LogInformation("OAuth klient pro kiosk '{ClientId}' byl vytvoren.", options.ClientId);
     }
@@ -91,13 +91,6 @@ public sealed class ServerBootstrapHostedService(
     {
         var applicationManager = services.GetRequiredService<IOpenIddictApplicationManager>();
         var options = operatorOptions.Value;
-
-        var existingApplication = await applicationManager.FindByClientIdAsync(options.ClientId, cancellationToken);
-        if (existingApplication is not null)
-        {
-            return;
-        }
-
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = options.ClientId,
@@ -113,6 +106,7 @@ public sealed class ServerBootstrapHostedService(
                 OpenIddictConstants.Permissions.Endpoints.Authorization,
                 OpenIddictConstants.Permissions.Endpoints.Token,
                 OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                OpenIddictConstants.Permissions.GrantTypes.Password,
                 OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
                 OpenIddictConstants.Permissions.ResponseTypes.Code,
                 OpenIddictConstants.Permissions.Prefixes.Scope + Configuration.Scopes.OpenId,
@@ -127,6 +121,13 @@ public sealed class ServerBootstrapHostedService(
             }
         };
 
+        var existingApplication = await applicationManager.FindByClientIdAsync(options.ClientId, cancellationToken);
+        if (existingApplication is not null)
+        {
+            await applicationManager.UpdateAsync(existingApplication, descriptor, cancellationToken);
+            return;
+        }
+
         await applicationManager.CreateAsync(descriptor, cancellationToken);
         logger.LogInformation("OAuth klient pro provozovatele '{ClientId}' byl vytvoren.", options.ClientId);
     }
@@ -136,7 +137,9 @@ public sealed class ServerBootstrapHostedService(
         var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
         var options = bootstrapIdentityOptions.Value;
 
+        await EnsureUserInRoleAsync(userManager, options.Player, Roles.Customer, cancellationToken);
         await EnsureUserInRoleAsync(userManager, options.Admin, Roles.Admin, cancellationToken);
+        await EnsureUserInRoleAsync(userManager, options.Admin, Roles.Operator, cancellationToken);
         await EnsureUserInRoleAsync(userManager, options.Operator, Roles.Operator, cancellationToken);
     }
 
@@ -159,7 +162,9 @@ public sealed class ServerBootstrapHostedService(
         {
             user = new IdentityUser
             {
-                UserName = userOptions.UserName
+                UserName = userOptions.UserName,
+                Email = BuildBootstrapEmail(userOptions.UserName),
+                EmailConfirmed = true
             };
 
             var createResult = await userManager.CreateAsync(user, userOptions.Password);
@@ -170,6 +175,32 @@ public sealed class ServerBootstrapHostedService(
             }
 
             logger.LogInformation("Bootstrap uzivatel '{UserName}' byl vytvoren.", userOptions.UserName);
+        }
+        else
+        {
+            var requiresUpdate = false;
+
+            if (string.IsNullOrWhiteSpace(user.Email))
+            {
+                user.Email = BuildBootstrapEmail(userOptions.UserName);
+                requiresUpdate = true;
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                user.EmailConfirmed = true;
+                requiresUpdate = true;
+            }
+
+            if (requiresUpdate)
+            {
+                var updateResult = await userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"Nepodarilo se aktualizovat bootstrap uzivatele '{userOptions.UserName}': {string.Join(", ", updateResult.Errors.Select(error => error.Description))}");
+                }
+            }
         }
 
         if (await userManager.IsInRoleAsync(user, roleName))
@@ -183,6 +214,13 @@ public sealed class ServerBootstrapHostedService(
             throw new InvalidOperationException(
                 $"Nepodarilo se priradit uzivateli '{userOptions.UserName}' roli '{roleName}': {string.Join(", ", addToRoleResult.Errors.Select(error => error.Description))}");
         }
+    }
+
+    private static string BuildBootstrapEmail(string userName)
+    {
+        return userName.Contains('@', StringComparison.Ordinal)
+            ? userName
+            : $"{userName}@d3bet.local";
     }
 
     private static async Task PrepareLegacyIdentityDatabaseAsync(

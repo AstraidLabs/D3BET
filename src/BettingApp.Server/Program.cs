@@ -22,12 +22,15 @@ using OpenIddict.Validation.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+builder.Services.AddAntiforgery();
 builder.Services.AddProblemDetails();
 builder.Services.AddSignalR();
 builder.Services.Configure<KioskOAuthClientOptions>(builder.Configuration.GetSection(KioskOAuthClientOptions.SectionName));
 builder.Services.Configure<OperatorOAuthClientOptions>(builder.Configuration.GetSection(OperatorOAuthClientOptions.SectionName));
 builder.Services.Configure<BootstrapIdentityOptions>(builder.Configuration.GetSection(BootstrapIdentityOptions.SectionName));
 builder.Services.Configure<ServerDiscoveryOptions>(builder.Configuration.GetSection(ServerDiscoveryOptions.SectionName));
+builder.Services.Configure<AccountEmailOptions>(builder.Configuration.GetSection(AccountEmailOptions.SectionName));
+builder.Services.Configure<D3CreditOptions>(builder.Configuration.GetSection(D3CreditOptions.SectionName));
 
 var bettingDatabasePath = ServerStoragePaths.GetBettingDatabasePath();
 var authDatabasePath = ServerStoragePaths.GetAuthDatabasePath();
@@ -47,7 +50,8 @@ builder.Services.AddDbContext<ServerIdentityDbContext>(options =>
 builder.Services
     .AddIdentity<IdentityUser, IdentityRole>(options =>
     {
-        options.User.RequireUniqueEmail = false;
+        options.User.RequireUniqueEmail = true;
+        options.SignIn.RequireConfirmedAccount = true;
         options.Password.RequireDigit = true;
         options.Password.RequireLowercase = true;
         options.Password.RequireUppercase = false;
@@ -70,6 +74,7 @@ builder.Services
         options.SetTokenEndpointUris("/connect/token");
         options.AllowAuthorizationCodeFlow()
             .RequireProofKeyForCodeExchange();
+        options.AllowPasswordFlow();
         options.AllowRefreshTokenFlow();
         options.AllowClientCredentialsFlow();
         options.RegisterScopes(Scopes.DisplayRead, Scopes.Operations, Scopes.OfflineAccess, Scopes.OpenId, Scopes.Profile, Scopes.Roles);
@@ -106,6 +111,11 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser();
         policy.RequireAssertion(context => context.User.HasScope(Scopes.DisplayRead));
     });
+    options.AddPolicy(Policies.AuthenticatedUser, policy =>
+    {
+        policy.AuthenticationSchemes.Add(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+        policy.RequireAuthenticatedUser();
+    });
     options.AddPolicy(Policies.Operations, policy =>
     {
         policy.AuthenticationSchemes.Add(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
@@ -122,9 +132,17 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddScoped<CustomerDisplayQueryService>();
+builder.Services.AddScoped<PlayerPortalService>();
 builder.Services.AddScoped<OperatorPrincipalFactory>();
 builder.Services.AddScoped<AuditLogService>();
+builder.Services.AddScoped<D3CreditService>();
+builder.Services.AddSingleton<ID3CreditPaymentGateway, FakeD3CreditPaymentGateway>();
+builder.Services.AddHttpClient<IGatewayOAuth2TokenClient, GatewayOAuth2TokenClient>();
+builder.Services.AddSingleton<PreviewAccountEmailSender>();
+builder.Services.AddSingleton<MailKitAccountEmailSender>();
+builder.Services.AddSingleton<IAccountEmailSender, AccountEmailSenderFactory>();
 builder.Services.AddSingleton<ServerAppSettingsStore>();
+builder.Services.AddSingleton<D3CreditAdminSettingsStore>();
 builder.Services.AddHostedService<ServerBootstrapHostedService>();
 builder.Services.AddHostedService<ServerDiscoveryHostedService>();
 
@@ -365,12 +383,44 @@ app.MapPost("/connect/token", async (HttpContext context) =>
         return Results.SignIn(tokenPrincipal, properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
+    if (request.IsPasswordGrantType())
+    {
+        var userManager = context.RequestServices.GetRequiredService<UserManager<IdentityUser>>();
+        var principalFactory = context.RequestServices.GetRequiredService<OperatorPrincipalFactory>();
+        var signInManager = context.RequestServices.GetRequiredService<SignInManager<IdentityUser>>();
+
+        var userNameOrEmail = request.Username ?? string.Empty;
+        var password = request.Password ?? string.Empty;
+
+        var user = await FindUserByNameOrEmailAsync(userManager, userNameOrEmail);
+        if (user is null || !await userManager.CheckPasswordAsync(user, password))
+        {
+            return Results.Forbid(authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme], properties: new AuthenticationProperties(new Dictionary<string, string?>
+            {
+                [OpenIddictServerAspNetCoreConstants.Properties.Error] = OpenIddictConstants.Errors.InvalidGrant,
+                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Neplatné přihlašovací údaje."
+            }));
+        }
+
+        if (!await signInManager.CanSignInAsync(user))
+        {
+            return Results.Forbid(authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme], properties: new AuthenticationProperties(new Dictionary<string, string?>
+            {
+                [OpenIddictServerAspNetCoreConstants.Properties.Error] = OpenIddictConstants.Errors.InvalidGrant,
+                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Účet ještě není aktivovaný nebo nemůže být použit pro přihlášení."
+            }));
+        }
+
+        var passwordGrantPrincipal = await principalFactory.CreateAsync(user, request.GetScopes(), context.RequestAborted);
+        return Results.SignIn(passwordGrantPrincipal, properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    }
+
     if (!request.IsClientCredentialsGrantType())
     {
         return Results.BadRequest(new
         {
             error = OpenIddictConstants.Errors.UnsupportedGrantType,
-            error_description = "Server zatím podporuje granty authorization_code, refresh_token a client_credentials."
+            error_description = "Server zatím podporuje granty authorization_code, password, refresh_token a client_credentials."
         });
     }
 
@@ -407,6 +457,181 @@ app.MapGet("/api/customer-display", async (CustomerDisplayQueryService service, 
     Results.Ok(await service.GetAsync(cancellationToken)))
     .RequireAuthorization(Policies.DisplayRead);
 
+app.MapPost("/api/account/register", async (
+    RegisterAccountRequest request,
+    UserManager<IdentityUser> userManager,
+    IAccountEmailSender emailSender,
+    CancellationToken cancellationToken) =>
+{
+    cancellationToken.ThrowIfCancellationRequested();
+    ValidatePasswordConfirmation(request.Password, request.ConfirmPassword);
+    ValidateRequiredText(request.UserName, "Uživatelské jméno");
+    ValidateRequiredText(request.Email, "E-mail");
+
+    if (await userManager.FindByNameAsync(request.UserName) is not null)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Uživatelské jméno už existuje",
+            detail: "Vyberte prosím jiné uživatelské jméno.");
+    }
+
+    if (await userManager.FindByEmailAsync(request.Email) is not null)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "E-mail už je použitý",
+            detail: "Tento e-mail je už v D3Bet přiřazený k jinému účtu.");
+    }
+
+    var user = new IdentityUser
+    {
+        UserName = request.UserName.Trim(),
+        Email = request.Email.Trim(),
+        EmailConfirmed = false
+    };
+
+    var createResult = await userManager.CreateAsync(user, request.Password);
+    if (!createResult.Succeeded)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Registraci se nepodařilo dokončit",
+            detail: string.Join(" ", createResult.Errors.Select(error => error.Description)));
+    }
+
+    var roleResult = await userManager.AddToRoleAsync(user, Roles.Customer);
+    if (!roleResult.Succeeded)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status500InternalServerError,
+            title: "Účet byl vytvořen jen částečně",
+            detail: "Účet se vytvořil, ale nepodařilo se přiřadit zákaznickou roli.");
+    }
+
+    var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
+    var preview = await emailSender.SendActivationAsync(user.UserName ?? request.UserName.Trim(), user.Email!, token, cancellationToken);
+
+    return Results.Ok(new AccountSelfServiceResponse(
+        "Účet byl vytvořen. Dokončete prosím aktivaci pomocí kódu z e-mailu nebo preview tokenu.",
+        preview));
+});
+
+app.MapPost("/api/account/activate", async (
+    ActivateAccountRequest request,
+    UserManager<IdentityUser> userManager,
+    CancellationToken cancellationToken) =>
+{
+    cancellationToken.ThrowIfCancellationRequested();
+    ValidateRequiredText(request.UserNameOrEmail, "Uživatel nebo e-mail");
+    ValidateRequiredText(request.Token, "Aktivační token");
+
+    var user = await FindUserByNameOrEmailAsync(userManager, request.UserNameOrEmail);
+    if (user is null)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status404NotFound,
+            title: "Účet nebyl nalezen",
+            detail: "Pro zadaný účet nebyla nalezena registrace.");
+    }
+
+    if (user.EmailConfirmed)
+    {
+        return Results.Ok(new AccountSelfServiceResponse("Účet už je aktivovaný a můžete se přihlásit."));
+    }
+
+    var result = await userManager.ConfirmEmailAsync(user, request.Token);
+    if (!result.Succeeded)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Aktivace se nepodařila",
+            detail: string.Join(" ", result.Errors.Select(error => error.Description)));
+    }
+
+    return Results.Ok(new AccountSelfServiceResponse("Účet byl úspěšně aktivovaný."));
+});
+
+app.MapPost("/api/account/reactivate", async (
+    ReactivateAccountRequest request,
+    UserManager<IdentityUser> userManager,
+    IAccountEmailSender emailSender,
+    CancellationToken cancellationToken) =>
+{
+    cancellationToken.ThrowIfCancellationRequested();
+    ValidateRequiredText(request.UserNameOrEmail, "Uživatel nebo e-mail");
+
+    var user = await FindUserByNameOrEmailAsync(userManager, request.UserNameOrEmail);
+    if (user is null || string.IsNullOrWhiteSpace(user.Email))
+    {
+        return Results.Ok(new AccountSelfServiceResponse("Pokud účet existuje, byl pro něj připraven nový aktivační krok."));
+    }
+
+    if (user.EmailConfirmed)
+    {
+        return Results.Ok(new AccountSelfServiceResponse("Účet už je aktivovaný. Stačí se přihlásit."));
+    }
+
+    var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
+    var preview = await emailSender.SendActivationAsync(user.UserName ?? user.Id, user.Email, token, cancellationToken);
+    return Results.Ok(new AccountSelfServiceResponse(
+        "Pro účet byl připraven nový aktivační krok.",
+        preview));
+});
+
+app.MapPost("/api/account/forgot-password", async (
+    ForgotPasswordRequest request,
+    UserManager<IdentityUser> userManager,
+    IAccountEmailSender emailSender,
+    CancellationToken cancellationToken) =>
+{
+    cancellationToken.ThrowIfCancellationRequested();
+    ValidateRequiredText(request.UserNameOrEmail, "Uživatel nebo e-mail");
+
+    var user = await FindUserByNameOrEmailAsync(userManager, request.UserNameOrEmail);
+    if (user is null || string.IsNullOrWhiteSpace(user.Email) || !user.EmailConfirmed)
+    {
+        return Results.Ok(new AccountSelfServiceResponse("Pokud účet existuje a je aktivovaný, byl připraven krok pro obnovu hesla."));
+    }
+
+    var token = await userManager.GeneratePasswordResetTokenAsync(user);
+    var preview = await emailSender.SendPasswordResetAsync(user.UserName ?? user.Id, user.Email, token, cancellationToken);
+    return Results.Ok(new AccountSelfServiceResponse(
+        "Pokud účet existuje a je aktivovaný, byl připraven krok pro obnovu hesla.",
+        preview));
+});
+
+app.MapPost("/api/account/reset-password", async (
+    ResetPasswordRequest request,
+    UserManager<IdentityUser> userManager,
+    CancellationToken cancellationToken) =>
+{
+    cancellationToken.ThrowIfCancellationRequested();
+    ValidatePasswordConfirmation(request.NewPassword, request.ConfirmPassword);
+    ValidateRequiredText(request.UserNameOrEmail, "Uživatel nebo e-mail");
+    ValidateRequiredText(request.Token, "Reset token");
+
+    var user = await FindUserByNameOrEmailAsync(userManager, request.UserNameOrEmail);
+    if (user is null)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status404NotFound,
+            title: "Účet nebyl nalezen",
+            detail: "Pro zadané údaje nebyl nalezen účet k obnově hesla.");
+    }
+
+    var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+    if (!result.Succeeded)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Heslo se nepodařilo obnovit",
+            detail: string.Join(" ", result.Errors.Select(error => error.Description)));
+    }
+
+    return Results.Ok(new AccountSelfServiceResponse("Heslo bylo úspěšně změněno."));
+});
+
 app.MapGet("/api/auth/me", async (
     HttpContext context,
     UserManager<IdentityUser> userManager) =>
@@ -430,8 +655,190 @@ app.MapGet("/api/auth/me", async (
     }
 
     var roles = await userManager.GetRolesAsync(user);
-    return Results.Ok(new OperatorProfileResponse(user.Id, user.UserName ?? user.Id, roles.ToArray()));
-}).RequireAuthorization(Policies.Operations);
+    return Results.Ok(new AccountProfileResponse(user.Id, user.UserName ?? user.Id, user.Email, user.EmailConfirmed, roles.ToArray()));
+}).RequireAuthorization(Policies.AuthenticatedUser);
+
+app.MapGet("/api/account/profile", async (
+    HttpContext context,
+    UserManager<IdentityUser> userManager) =>
+{
+    var subject = context.User.GetClaim(OpenIddictConstants.Claims.Subject);
+    if (string.IsNullOrWhiteSpace(subject))
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Přihlášení je potřeba obnovit",
+            detail: "Aktuální relace neobsahuje identitu přihlášeného uživatele.");
+    }
+
+    var user = await userManager.FindByIdAsync(subject);
+    if (user is null)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Přihlášený účet nebyl nalezen",
+            detail: "Účet spojený s aktuální relací už na serveru D3Bet neexistuje.");
+    }
+
+    var roles = await userManager.GetRolesAsync(user);
+    return Results.Ok(new AccountProfileResponse(user.Id, user.UserName ?? user.Id, user.Email, user.EmailConfirmed, roles.ToArray()));
+}).RequireAuthorization(Policies.AuthenticatedUser);
+
+app.MapPut("/api/account/profile", async (
+    HttpContext context,
+    UpdateAccountProfileRequest request,
+    UserManager<IdentityUser> userManager,
+    IAccountEmailSender emailSender,
+    CancellationToken cancellationToken) =>
+{
+    cancellationToken.ThrowIfCancellationRequested();
+    ValidateRequiredText(request.UserName, "Uživatelské jméno");
+    ValidateRequiredText(request.Email, "E-mail");
+
+    var subject = context.User.GetClaim(OpenIddictConstants.Claims.Subject);
+    if (string.IsNullOrWhiteSpace(subject))
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Přihlášení je potřeba obnovit",
+            detail: "Aktuální relace neobsahuje identitu přihlášeného uživatele.");
+    }
+
+    var user = await userManager.FindByIdAsync(subject);
+    if (user is null)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Přihlášený účet nebyl nalezen",
+            detail: "Účet spojený s aktuální relací už na serveru D3Bet neexistuje.");
+    }
+
+    var existingUserWithName = await userManager.FindByNameAsync(request.UserName.Trim());
+    if (existingUserWithName is not null && !string.Equals(existingUserWithName.Id, user.Id, StringComparison.Ordinal))
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Uživatelské jméno už existuje",
+            detail: "Vyberte prosím jiné uživatelské jméno.");
+    }
+
+    var existingUserWithEmail = await userManager.FindByEmailAsync(request.Email.Trim());
+    if (existingUserWithEmail is not null && !string.Equals(existingUserWithEmail.Id, user.Id, StringComparison.Ordinal))
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "E-mail už je použitý",
+            detail: "Tento e-mail je už přiřazený k jinému účtu.");
+    }
+
+    var emailChanged = !string.Equals(user.Email, request.Email.Trim(), StringComparison.OrdinalIgnoreCase);
+    user.UserName = request.UserName.Trim();
+    user.Email = request.Email.Trim();
+
+    if (emailChanged)
+    {
+        user.EmailConfirmed = false;
+    }
+
+    var updateResult = await userManager.UpdateAsync(user);
+    if (!updateResult.Succeeded)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Profil se nepodařilo uložit",
+            detail: string.Join(" ", updateResult.Errors.Select(error => error.Description)));
+    }
+
+    AccountPreviewResponse? preview = null;
+    if (emailChanged && !string.IsNullOrWhiteSpace(user.Email))
+    {
+        var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        preview = await emailSender.SendActivationAsync(user.UserName ?? user.Id, user.Email, token, cancellationToken);
+    }
+
+    var roles = await userManager.GetRolesAsync(user);
+    return Results.Ok(new
+    {
+        message = emailChanged
+            ? "Profil byl uložen. Protože se změnil e-mail, je potřeba účet znovu aktivovat."
+            : "Profil byl úspěšně uložen.",
+        preview,
+        profile = new AccountProfileResponse(user.Id, user.UserName ?? user.Id, user.Email, user.EmailConfirmed, roles.ToArray())
+    });
+}).RequireAuthorization(Policies.AuthenticatedUser);
+
+app.MapGet("/api/player/dashboard", async (
+    HttpContext context,
+    PlayerPortalService playerPortalService,
+    CancellationToken cancellationToken) =>
+{
+    var subject = context.User.GetClaim(OpenIddictConstants.Claims.Subject);
+    if (string.IsNullOrWhiteSpace(subject))
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Přihlášení je potřeba obnovit",
+            detail: "V tokenu chybí identita přihlášeného hráče.");
+    }
+
+    return Results.Ok(await playerPortalService.GetDashboardAsync(subject, cancellationToken));
+}).RequireAuthorization(Policies.AuthenticatedUser);
+
+app.MapPost("/api/player/topups/test", async (
+    HttpContext context,
+    PlayerPortalService playerPortalService,
+    PlayerTopUpRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var subject = context.User.GetClaim(OpenIddictConstants.Claims.Subject);
+    if (string.IsNullOrWhiteSpace(subject))
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Přihlášení je potřeba obnovit",
+            detail: "V tokenu chybí identita přihlášeného hráče.");
+    }
+
+    return Results.Ok(await playerPortalService.TopUpAsync(subject, request, cancellationToken));
+}).RequireAuthorization(Policies.AuthenticatedUser);
+
+app.MapPost("/api/player/markets/{marketId:guid}/quote", async (
+    HttpContext context,
+    PlayerPortalService playerPortalService,
+    Guid marketId,
+    PlayerCreditBetRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var subject = context.User.GetClaim(OpenIddictConstants.Claims.Subject);
+    if (string.IsNullOrWhiteSpace(subject))
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Přihlášení je potřeba obnovit",
+            detail: "V tokenu chybí identita přihlášeného hráče.");
+    }
+
+    return Results.Ok(await playerPortalService.QuoteAsync(subject, marketId, request, cancellationToken));
+}).RequireAuthorization(Policies.AuthenticatedUser);
+
+app.MapPost("/api/player/markets/{marketId:guid}/bets", async (
+    HttpContext context,
+    PlayerPortalService playerPortalService,
+    Guid marketId,
+    PlayerCreditBetRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var subject = context.User.GetClaim(OpenIddictConstants.Claims.Subject);
+    if (string.IsNullOrWhiteSpace(subject))
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Přihlášení je potřeba obnovit",
+            detail: "V tokenu chybí identita přihlášeného hráče.");
+    }
+
+    return Results.Ok(await playerPortalService.PlaceBetAsync(subject, marketId, request, cancellationToken));
+}).RequireAuthorization(Policies.AuthenticatedUser);
 
 var operations = app.MapGroup("/api/operations")
     .RequireAuthorization(Policies.Operations);
@@ -568,31 +975,142 @@ operations.MapPut("/bets/{betId:guid}", async (
 
 operations.MapDelete("/bets/{betId:guid}", async (
     HttpContext context,
-    IMediator mediator,
+    D3CreditService creditService,
     AuditLogService auditLogService,
     Guid betId,
     CancellationToken cancellationToken) =>
 {
-    await mediator.Send(new DeleteBetCommand(betId), cancellationToken);
+    await creditService.DeleteBetAsync(betId, cancellationToken);
     await auditLogService.RecordAsync(context, "BetDeleted", "Bet", betId.ToString(), cancellationToken: cancellationToken);
     return Results.NoContent();
 });
 
 operations.MapPost("/bets/{betId:guid}/outcome", async (
     HttpContext context,
-    IMediator mediator,
+    D3CreditService creditService,
     AuditLogService auditLogService,
     Guid betId,
     SetBetOutcomeStatusRequest request,
     CancellationToken cancellationToken) =>
 {
-    await mediator.Send(new SetBetOutcomeStatusCommand(betId, request.OutcomeStatus), cancellationToken);
+    await creditService.SetBetOutcomeStatusAsync(betId, request.OutcomeStatus, cancellationToken);
     await auditLogService.RecordAsync(context, "BetOutcomeChanged", "Bet", betId.ToString(), new
     {
         request.OutcomeStatus
     }, cancellationToken);
     return Results.NoContent();
 });
+
+operations.MapGet("/d3credit/wallets/{bettorId:guid}", async (
+    D3CreditService service,
+    Guid bettorId,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await service.GetWalletAsync(bettorId, cancellationToken));
+});
+
+operations.MapPost("/d3credit/topups/test", async (
+    D3CreditService service,
+    D3CreditTopUpRequest request,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await service.TopUpAsync(request, cancellationToken));
+});
+
+operations.MapPost("/d3credit/markets/{marketId:guid}/quote", async (
+    D3CreditService service,
+    Guid marketId,
+    D3CreditQuoteRequest request,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await service.QuoteAsync(marketId, request, cancellationToken));
+});
+
+operations.MapPost("/d3credit/markets/{marketId:guid}/bets", async (
+    D3CreditService service,
+    Guid marketId,
+    D3CreditBetRequest request,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await service.PlaceCreditBetAsync(marketId, request, cancellationToken));
+});
+
+operations.MapPut("/d3credit/bets/{betId:guid}", async (
+    D3CreditService service,
+    Guid betId,
+    [FromQuery] Guid marketId,
+    D3CreditBetRequest request,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await service.UpdateCreditBetAsync(betId, marketId, request, cancellationToken));
+});
+
+operations.MapGet("/d3credit/admin/settings", async (
+    D3CreditService service,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await service.GetAdminSettingsAsync(cancellationToken));
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPut("/d3credit/admin/settings", async (
+    HttpContext context,
+    D3CreditService service,
+    AuditLogService auditLogService,
+    UpdateD3CreditAdminSettingsRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var settings = await service.SaveAdminSettingsAsync(request, cancellationToken);
+    await auditLogService.RecordAsync(context, "D3CreditSettingsUpdated", "D3CreditSettings", "global", settings, cancellationToken);
+    return Results.Ok(settings);
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapGet("/d3credit/admin/wallets", async (
+    D3CreditService service,
+    [FromQuery] string? search,
+    [FromQuery] int? limit,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await service.GetAdminWalletsAsync(search, limit ?? 80, cancellationToken));
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapGet("/d3credit/admin/transactions", async (
+    D3CreditService service,
+    [FromQuery] string? search,
+    [FromQuery] int? limit,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await service.GetAdminTransactionsAsync(search, limit ?? 120, cancellationToken));
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPost("/d3credit/admin/adjustments", async (
+    HttpContext context,
+    D3CreditService service,
+    AuditLogService auditLogService,
+    D3CreditManualAdjustmentRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var wallet = await service.ApplyManualAdjustmentAsync(request, cancellationToken);
+    await auditLogService.RecordAsync(context, "D3CreditManualAdjustment", "BettorWallet", wallet.BettorId.ToString(), request, cancellationToken);
+    return Results.Ok(wallet);
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPost("/d3credit/admin/bets/{betId:guid}/refund", async (
+    HttpContext context,
+    D3CreditService service,
+    AuditLogService auditLogService,
+    Guid betId,
+    D3CreditBetRefundRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var wallet = await service.RefundBetAsync(betId, request.Reason, cancellationToken);
+    await auditLogService.RecordAsync(context, "D3CreditBetRefunded", "Bet", betId.ToString(), new
+    {
+        request.Reason,
+        wallet.BettorId,
+        wallet.Balance
+    }, cancellationToken);
+    return Results.Ok(wallet);
+}).RequireAuthorization(Policies.AdminOnly);
 
 app.MapGet("/api/health", () => Results.Ok(new
 {
@@ -640,4 +1158,32 @@ static string ResolveCorrelationId(HttpContext context, string headerName)
     }
 
     return Guid.NewGuid().ToString("N");
+}
+
+static void ValidateRequiredText(string? value, string fieldName)
+{
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        throw new InvalidOperationException($"Pole '{fieldName}' je povinné.");
+    }
+}
+
+static void ValidatePasswordConfirmation(string password, string confirmation)
+{
+    if (!string.Equals(password, confirmation, StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException("Zadaná hesla se neshodují.");
+    }
+}
+
+static async Task<IdentityUser?> FindUserByNameOrEmailAsync(UserManager<IdentityUser> userManager, string userNameOrEmail)
+{
+    var normalized = userNameOrEmail.Trim();
+    if (string.IsNullOrWhiteSpace(normalized))
+    {
+        return null;
+    }
+
+    return await userManager.FindByNameAsync(normalized)
+        ?? await userManager.FindByEmailAsync(normalized);
 }

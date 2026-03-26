@@ -4,8 +4,11 @@ namespace BettingApp.Wpf.Services;
 
 public sealed class StartupSequenceRunner(
     MainViewModel mainViewModel,
+    PlayerMainViewModel playerMainViewModel,
     OperatorAuthService operatorAuthService,
-    ServerDiscoveryService serverDiscoveryService)
+    ServerDiscoveryService serverDiscoveryService,
+    OperatorSessionContext operatorSessionContext,
+    ShellModeContext shellModeContext)
 {
     public async Task RunAsync(
         Func<StartupProgress, Task> reportProgressAsync,
@@ -22,7 +25,16 @@ public sealed class StartupSequenceRunner(
         await operatorAuthService.EnsureAuthenticatedAsync(cancellationToken);
 
         await reportProgressAsync(new StartupProgress("Chystáme vaše prostředí", "Načítáme dashboard, nastavení a první přehledy, abyste mohli ihned navázat na provoz.", 4, 4));
-        await mainViewModel.InitializeAsync();
+        if (operatorSessionContext.HasRole("Customer") && !operatorSessionContext.IsAdmin && !operatorSessionContext.IsOperator)
+        {
+            shellModeContext.Set(AppShellMode.Player);
+            await playerMainViewModel.InitializeAsync();
+        }
+        else
+        {
+            shellModeContext.Set(AppShellMode.Operator);
+            await mainViewModel.InitializeAsync();
+        }
     }
 }
 

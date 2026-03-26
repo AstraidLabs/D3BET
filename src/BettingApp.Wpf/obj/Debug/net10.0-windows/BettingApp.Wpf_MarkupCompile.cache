@@ -4,17 +4,17 @@
 winexe
 C#
 .cs
-C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Wpf\obj\Debug\net10.0-windows\
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\
 BettingApp.Wpf
 none
 false
 TRACE;DEBUG;NET;NET10_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NET9_0_OR_GREATER;NET10_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
-C:\Users\tvanek\OneDrive - Seyfor\Dokumenty\New project 2\src\BettingApp.Wpf\App.xaml
-15581929443
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\App.xaml
+18-1844630624
 
-411451031971
-36610503284
-Styles\Badges.xaml;Styles\Buttons.xaml;Styles\Cards.xaml;Styles\Colors.xaml;Styles\DesignSystem.xaml;Styles\Elevation.xaml;Styles\Inputs.xaml;Styles\Motion.xaml;Styles\Spacing.xaml;Styles\Typography.xaml;Views\BetEditorWindow.xaml;Views\CustomerDisplayWindow.xaml;Views\MainWindow.xaml;Views\MarketEditorWindow.xaml;Views\StartupWindow.xaml;
+52-1671898423
+366380585328
+Styles\Badges.xaml;Styles\Buttons.xaml;Styles\Cards.xaml;Styles\Colors.xaml;Styles\DesignSystem.xaml;Styles\Elevation.xaml;Styles\Inputs.xaml;Styles\Motion.xaml;Styles\Spacing.xaml;Styles\Typography.xaml;Views\BetEditorWindow.xaml;Views\CustomerDisplayWindow.xaml;Views\LoginWindow.xaml;Views\MainWindow.xaml;Views\MarketEditorWindow.xaml;Views\PlayerWindow.xaml;Views\ProfileWindow.xaml;Views\StartupWindow.xaml;
 
 False
 

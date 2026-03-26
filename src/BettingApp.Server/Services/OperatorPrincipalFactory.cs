@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using BettingApp.Server.Configuration;
 using OpenIddict.Abstractions;
 using System.Security.Claims;
 
@@ -13,8 +14,17 @@ public sealed class OperatorPrincipalFactory(UserManager<IdentityUser> userManag
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var roles = await userManager.GetRolesAsync(user);
         var scopes = requestedScopes
             .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .Where(scope =>
+                scope is Scopes.OpenId or Scopes.Profile or Scopes.OfflineAccess or Scopes.Roles ||
+                (scope == Scopes.Operations && roles.Any(role =>
+                    string.Equals(role, Roles.Admin, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(role, Roles.Operator, StringComparison.OrdinalIgnoreCase))) ||
+                (scope == Scopes.DisplayRead && roles.Any(role =>
+                    string.Equals(role, Roles.Admin, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(role, Roles.Operator, StringComparison.OrdinalIgnoreCase))))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
@@ -26,7 +36,7 @@ public sealed class OperatorPrincipalFactory(UserManager<IdentityUser> userManag
         identity.SetClaim(OpenIddictConstants.Claims.Subject, user.Id);
         identity.SetClaim(OpenIddictConstants.Claims.Name, user.UserName ?? user.Id);
 
-        foreach (var role in await userManager.GetRolesAsync(user))
+        foreach (var role in roles)
         {
             identity.AddClaim(new Claim(OpenIddictConstants.Claims.Role, role));
         }
