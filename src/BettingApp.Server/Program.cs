@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
@@ -31,6 +32,7 @@ builder.Services.Configure<BootstrapIdentityOptions>(builder.Configuration.GetSe
 builder.Services.Configure<ServerDiscoveryOptions>(builder.Configuration.GetSection(ServerDiscoveryOptions.SectionName));
 builder.Services.Configure<AccountEmailOptions>(builder.Configuration.GetSection(AccountEmailOptions.SectionName));
 builder.Services.Configure<D3CreditOptions>(builder.Configuration.GetSection(D3CreditOptions.SectionName));
+builder.Services.Configure<LicensingOptions>(builder.Configuration.GetSection(LicensingOptions.SectionName));
 
 var bettingDatabasePath = ServerStoragePaths.GetBettingDatabasePath();
 var authDatabasePath = ServerStoragePaths.GetAuthDatabasePath();
@@ -135,7 +137,11 @@ builder.Services.AddScoped<CustomerDisplayQueryService>();
 builder.Services.AddScoped<PlayerPortalService>();
 builder.Services.AddScoped<OperatorPrincipalFactory>();
 builder.Services.AddScoped<AuditLogService>();
+builder.Services.AddScoped<AdminUserManagementService>();
+builder.Services.AddScoped<AdminLicenseManagementService>();
 builder.Services.AddScoped<D3CreditService>();
+builder.Services.AddSingleton<LicenseStore>();
+builder.Services.AddSingleton<LicenseService>();
 builder.Services.AddSingleton<ID3CreditPaymentGateway, FakeD3CreditPaymentGateway>();
 builder.Services.AddHttpClient<IGatewayOAuth2TokenClient, GatewayOAuth2TokenClient>();
 builder.Services.AddSingleton<PreviewAccountEmailSender>();
@@ -658,6 +664,75 @@ app.MapGet("/api/auth/me", async (
     return Results.Ok(new AccountProfileResponse(user.Id, user.UserName ?? user.Id, user.Email, user.EmailConfirmed, roles.ToArray()));
 }).RequireAuthorization(Policies.AuthenticatedUser);
 
+app.MapGet("/api/auth/client-configuration", async (
+    HttpRequest request,
+    LicenseService licenseService,
+    CancellationToken cancellationToken) =>
+{
+    var license = await licenseService.ValidateRequestAsync(request, cancellationToken);
+    return Results.Ok(await licenseService.BuildEncryptedClientConfigurationAsync(license, cancellationToken));
+});
+
+app.MapPost("/api/license/activate", async (
+    LicenseService licenseService,
+    LicenseActivationRequest request,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await licenseService.ActivateAsync(request, cancellationToken));
+});
+
+app.MapPost("/api/license/validate", async (
+    LicenseService licenseService,
+    LicenseValidationRequest request,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await licenseService.ValidateAsync(request, cancellationToken));
+});
+
+app.MapGet("/api/operations/licensing", async (
+    [FromQuery] int? auditLimit,
+    AdminLicenseManagementService adminLicenseManagementService,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await adminLicenseManagementService.GetOverviewAsync(auditLimit ?? 40, cancellationToken));
+}).RequireAuthorization(Policies.AdminOnly);
+
+app.MapPost("/api/operations/licensing/licenses/{licenseId}/revoke", async (
+    string licenseId,
+    LicenseAdminActionRequest request,
+    AdminLicenseManagementService adminLicenseManagementService,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await adminLicenseManagementService.RevokeAsync(licenseId, request.Reason, cancellationToken));
+}).RequireAuthorization(Policies.AdminOnly);
+
+app.MapPost("/api/operations/licensing/licenses/{licenseId}/restore", async (
+    string licenseId,
+    LicenseAdminActionRequest request,
+    AdminLicenseManagementService adminLicenseManagementService,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await adminLicenseManagementService.RestoreAsync(licenseId, request.Reason, cancellationToken));
+}).RequireAuthorization(Policies.AdminOnly);
+
+app.MapPost("/api/operations/licensing/licenses/{licenseId}/release", async (
+    string licenseId,
+    LicenseAdminActionRequest request,
+    AdminLicenseManagementService adminLicenseManagementService,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await adminLicenseManagementService.ReleaseAsync(licenseId, request.Reason, cancellationToken));
+}).RequireAuthorization(Policies.AdminOnly);
+
+app.MapPost("/api/operations/licensing/licenses/{licenseId}/extend", async (
+    string licenseId,
+    LicenseExtendRequest request,
+    AdminLicenseManagementService adminLicenseManagementService,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await adminLicenseManagementService.ExtendAsync(licenseId, request.AdditionalDays, request.Reason, cancellationToken));
+}).RequireAuthorization(Policies.AdminOnly);
+
 app.MapGet("/api/account/profile", async (
     HttpContext context,
     UserManager<IdentityUser> userManager) =>
@@ -802,6 +877,24 @@ app.MapPost("/api/player/topups/test", async (
     return Results.Ok(await playerPortalService.TopUpAsync(subject, request, cancellationToken));
 }).RequireAuthorization(Policies.AuthenticatedUser);
 
+app.MapPost("/api/player/withdrawals", async (
+    HttpContext context,
+    PlayerPortalService playerPortalService,
+    PlayerWithdrawalRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var subject = context.User.GetClaim(OpenIddictConstants.Claims.Subject);
+    if (string.IsNullOrWhiteSpace(subject))
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Přihlášení je potřeba obnovit",
+            detail: "V tokenu chybí identita přihlášeného hráče.");
+    }
+
+    return Results.Ok(await playerPortalService.RequestWithdrawalAsync(subject, request, cancellationToken));
+}).RequireAuthorization(Policies.AuthenticatedUser);
+
 app.MapPost("/api/player/markets/{marketId:guid}/quote", async (
     HttpContext context,
     PlayerPortalService playerPortalService,
@@ -855,6 +948,138 @@ operations.MapGet("/audit", async (
     CancellationToken cancellationToken) =>
     Results.Ok(await auditLogService.GetRecentAsync(limit ?? 60, cancellationToken)))
     .RequireAuthorization(Policies.AdminOnly);
+
+operations.MapGet("/users", async (
+    AdminUserManagementService service,
+    [FromQuery] string? search,
+    [FromQuery] string? role,
+    [FromQuery] string? sort,
+    [FromQuery] int? page,
+    [FromQuery] int? pageSize,
+    CancellationToken cancellationToken) =>
+    Results.Ok(await service.GetUsersAsync(search, role, sort, page ?? 1, pageSize ?? 20, cancellationToken)))
+    .RequireAuthorization(Policies.AdminOnly);
+
+operations.MapGet("/users/{userId}", async (
+    AdminUserManagementService service,
+    string userId,
+    CancellationToken cancellationToken) =>
+    Results.Ok(await service.GetUserDetailAsync(userId, cancellationToken)))
+    .RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPost("/users", async (
+    HttpContext context,
+    AdminUserManagementService service,
+    AuditLogService auditLogService,
+    SaveAdminUserRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var user = await service.CreateUserAsync(request, cancellationToken);
+    await auditLogService.RecordAsync(context, "UserCreated", "IdentityUser", user.Id, new
+    {
+        user.UserName,
+        user.Email,
+        user.Roles
+    }, cancellationToken);
+    return Results.Created($"/api/operations/users/{user.Id}", user);
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPut("/users/{userId}", async (
+    HttpContext context,
+    AdminUserManagementService service,
+    AuditLogService auditLogService,
+    string userId,
+    SaveAdminUserRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var user = await service.UpdateUserAsync(userId, request, cancellationToken);
+    await auditLogService.RecordAsync(context, "UserUpdated", "IdentityUser", user.Id, new
+    {
+        user.UserName,
+        user.Email,
+        user.Roles
+    }, cancellationToken);
+    return Results.Ok(user);
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapDelete("/users/{userId}", async (
+    HttpContext context,
+    AdminUserManagementService service,
+    AuditLogService auditLogService,
+    string userId,
+    CancellationToken cancellationToken) =>
+{
+    var actorUserId = context.User.GetClaim(OpenIddictConstants.Claims.Subject) ?? string.Empty;
+    await service.DeleteUserAsync(userId, actorUserId, cancellationToken);
+    await auditLogService.RecordAsync(context, "UserDeleted", "IdentityUser", userId, cancellationToken: cancellationToken);
+    return Results.NoContent();
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPost("/users/{userId}/activate", async (
+    HttpContext context,
+    AdminUserManagementService service,
+    AuditLogService auditLogService,
+    string userId,
+    CancellationToken cancellationToken) =>
+{
+    var user = await service.ActivateUserAsync(userId, cancellationToken);
+    await auditLogService.RecordAsync(context, "UserActivated", "IdentityUser", user.Id, new
+    {
+        user.UserName,
+        user.Email
+    }, cancellationToken);
+    return Results.Ok(user);
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPost("/users/{userId}/deactivate", async (
+    HttpContext context,
+    AdminUserManagementService service,
+    AuditLogService auditLogService,
+    string userId,
+    CancellationToken cancellationToken) =>
+{
+    var actorUserId = context.User.GetClaim(OpenIddictConstants.Claims.Subject) ?? string.Empty;
+    var user = await service.DeactivateUserAsync(userId, actorUserId, cancellationToken);
+    await auditLogService.RecordAsync(context, "UserDeactivated", "IdentityUser", user.Id, new
+    {
+        user.UserName,
+        user.Email
+    }, cancellationToken);
+    return Results.Ok(user);
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPost("/users/{userId}/block", async (
+    HttpContext context,
+    AdminUserManagementService service,
+    AuditLogService auditLogService,
+    string userId,
+    CancellationToken cancellationToken) =>
+{
+    var actorUserId = context.User.GetClaim(OpenIddictConstants.Claims.Subject) ?? string.Empty;
+    var user = await service.BlockUserAsync(userId, actorUserId, cancellationToken);
+    await auditLogService.RecordAsync(context, "UserBlocked", "IdentityUser", user.Id, new
+    {
+        user.UserName,
+        user.Email
+    }, cancellationToken);
+    return Results.Ok(user);
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPost("/users/{userId}/unblock", async (
+    HttpContext context,
+    AdminUserManagementService service,
+    AuditLogService auditLogService,
+    string userId,
+    CancellationToken cancellationToken) =>
+{
+    var user = await service.UnblockUserAsync(userId, cancellationToken);
+    await auditLogService.RecordAsync(context, "UserUnblocked", "IdentityUser", user.Id, new
+    {
+        user.UserName,
+        user.Email
+    }, cancellationToken);
+    return Results.Ok(user);
+}).RequireAuthorization(Policies.AdminOnly);
 
 operations.MapPut("/settings", async (
     HttpContext context,
@@ -1110,6 +1335,78 @@ operations.MapPost("/d3credit/admin/bets/{betId:guid}/refund", async (
         wallet.Balance
     }, cancellationToken);
     return Results.Ok(wallet);
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPost("/d3credit/admin/bets/{betId:guid}/payout", async (
+    HttpContext context,
+    D3CreditService service,
+    AuditLogService auditLogService,
+    Guid betId,
+    AdminWithdrawalDecisionRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var wallet = await service.PayoutWinningBetAsync(betId, request.Reason, cancellationToken);
+    await auditLogService.RecordAsync(context, "D3CreditBetPayoutProcessed", "Bet", betId.ToString(), new
+    {
+        request.Reason,
+        wallet.BettorId,
+        wallet.Balance
+    }, cancellationToken);
+    return Results.Ok(wallet);
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPost("/d3credit/admin/bets/{betId:guid}/payout/reverse", async (
+    HttpContext context,
+    D3CreditService service,
+    AuditLogService auditLogService,
+    Guid betId,
+    AdminWithdrawalDecisionRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var wallet = await service.ReverseWinningPayoutAsync(betId, request.Reason, cancellationToken);
+    await auditLogService.RecordAsync(context, "D3CreditBetPayoutReversed", "Bet", betId.ToString(), new
+    {
+        request.Reason,
+        wallet.BettorId,
+        wallet.Balance
+    }, cancellationToken);
+    return Results.Ok(wallet);
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPost("/d3credit/admin/withdrawals/{withdrawalId:guid}/approve", async (
+    HttpContext context,
+    D3CreditService service,
+    AuditLogService auditLogService,
+    Guid withdrawalId,
+    AdminWithdrawalDecisionRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var withdrawal = await service.ApproveWithdrawalAsync(withdrawalId, request.Reason, cancellationToken);
+    await auditLogService.RecordAsync(context, "D3CreditWithdrawalApproved", "CreditWithdrawalRequest", withdrawalId.ToString(), new
+    {
+        request.Reason,
+        withdrawal.RealMoneyAmount,
+        withdrawal.RealCurrencyCode
+    }, cancellationToken);
+    return Results.Ok(withdrawal);
+}).RequireAuthorization(Policies.AdminOnly);
+
+operations.MapPost("/d3credit/admin/withdrawals/{withdrawalId:guid}/reject", async (
+    HttpContext context,
+    D3CreditService service,
+    AuditLogService auditLogService,
+    Guid withdrawalId,
+    AdminWithdrawalDecisionRequest request,
+    CancellationToken cancellationToken) =>
+{
+    var withdrawal = await service.RejectWithdrawalAsync(withdrawalId, request.Reason, cancellationToken);
+    await auditLogService.RecordAsync(context, "D3CreditWithdrawalRejected", "CreditWithdrawalRequest", withdrawalId.ToString(), new
+    {
+        request.Reason,
+        withdrawal.RealMoneyAmount,
+        withdrawal.RealCurrencyCode
+    }, cancellationToken);
+    return Results.Ok(withdrawal);
 }).RequireAuthorization(Policies.AdminOnly);
 
 app.MapGet("/api/health", () => Results.Ok(new

@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BettingApp.Server.Data.Migrations
 {
     [DbContext(typeof(ServerIdentityDbContext))]
-    [Migration("20260326131525_InitialIdentityOpenIddict")]
+    [Migration("20260327113839_InitialIdentityOpenIddict")]
     partial class InitialIdentityOpenIddict
     {
         /// <inheritdoc />

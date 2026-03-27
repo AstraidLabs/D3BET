@@ -182,3 +182,13 @@ C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\
 C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\ProfileWindow.g.cs
 C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\PlayerWindow.baml
 C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\PlayerWindow.g.cs
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\AdminConfigurationPanel.baml
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\AdminConfigurationPanel.g.cs
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\BettingApp.Wpf_MarkupCompile.lref
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\UserAdministrationPanel.baml
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\UserAdministrationPanel.g.cs
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\UserAdministrationWindow.baml
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\UserAdministrationWindow.g.cs
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\LicenseActivationWindow.baml
+C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\obj\Debug\net10.0-windows\Views\LicenseActivationWindow.g.cs

@@ -10,11 +10,11 @@ none
 false
 TRACE;DEBUG;NET;NET10_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NET9_0_OR_GREATER;NET10_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
 C:\Users\tvanek\source\repos\D3BET\src\BettingApp.Wpf\App.xaml
-18-1844630624
+22552529065
 
-52-1671898423
+62-891084009
 366380585328
-Styles\Badges.xaml;Styles\Buttons.xaml;Styles\Cards.xaml;Styles\Colors.xaml;Styles\DesignSystem.xaml;Styles\Elevation.xaml;Styles\Inputs.xaml;Styles\Motion.xaml;Styles\Spacing.xaml;Styles\Typography.xaml;Views\BetEditorWindow.xaml;Views\CustomerDisplayWindow.xaml;Views\LoginWindow.xaml;Views\MainWindow.xaml;Views\MarketEditorWindow.xaml;Views\PlayerWindow.xaml;Views\ProfileWindow.xaml;Views\StartupWindow.xaml;
+Styles\Badges.xaml;Styles\Buttons.xaml;Styles\Cards.xaml;Styles\Colors.xaml;Styles\DesignSystem.xaml;Styles\Elevation.xaml;Styles\Inputs.xaml;Styles\Motion.xaml;Styles\Spacing.xaml;Styles\Typography.xaml;Views\AdminConfigurationPanel.xaml;Views\BetEditorWindow.xaml;Views\CustomerDisplayWindow.xaml;Views\LicenseActivationWindow.xaml;Views\LoginWindow.xaml;Views\MainWindow.xaml;Views\MarketEditorWindow.xaml;Views\PlayerWindow.xaml;Views\ProfileWindow.xaml;Views\StartupWindow.xaml;Views\UserAdministrationPanel.xaml;Views\UserAdministrationWindow.xaml;
 
 False
 

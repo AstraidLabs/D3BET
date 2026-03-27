@@ -20,6 +20,9 @@ public sealed class D3CreditAdminViewModel : ObservableObject
     private bool enableTestTopUpGateway = true;
     private bool enableManualCreditAdjustments = true;
     private bool enableManualBetRefunds = true;
+    private bool enablePlayerWithdrawals = true;
+    private bool autoApproveWithdrawals;
+    private bool autoPayoutWinningBets = true;
     private string walletSearchText = string.Empty;
     private D3CreditAdminWalletItemViewModel? selectedWallet;
     private string manualCreditAmount = "0";
@@ -141,6 +144,24 @@ public sealed class D3CreditAdminViewModel : ObservableObject
     {
         get => enableManualBetRefunds;
         set => SetProperty(ref enableManualBetRefunds, value);
+    }
+
+    public bool EnablePlayerWithdrawals
+    {
+        get => enablePlayerWithdrawals;
+        set => SetProperty(ref enablePlayerWithdrawals, value);
+    }
+
+    public bool AutoApproveWithdrawals
+    {
+        get => autoApproveWithdrawals;
+        set => SetProperty(ref autoApproveWithdrawals, value);
+    }
+
+    public bool AutoPayoutWinningBets
+    {
+        get => autoPayoutWinningBets;
+        set => SetProperty(ref autoPayoutWinningBets, value);
     }
 
     public string WalletSearchText

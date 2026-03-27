@@ -1,0 +1,207 @@
+<UserControl x:Class="BettingApp.Wpf.Views.UserAdministrationPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="720"
+             d:DesignWidth="1080">
+    <UserControl.Resources>
+        <Style x:Key="GridHeaderStyleLocal" TargetType="GridViewColumnHeader">
+            <Setter Property="Background" Value="#122033" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="#2234475E" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+
+        <Style x:Key="GridListViewItemStyleLocal" TargetType="ListViewItem">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Background" Value="#00000000" />
+            <Setter Property="BorderBrush" Value="#18283B52" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1622354A" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#22314A67" />
+                    <Setter Property="BorderBrush" Value="#55F97316" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="GridListViewStyleLocal" TargetType="ListView">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource GridListViewItemStyleLocal}" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Správa uživatelů" />
+            <TextBlock Margin="0,4,0,0"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       Text="Vyhledejte účet, otevřete jeho detail v samostatném okně a spravujte přístupy, kredit i sázky bez přeplněného dashboardu."
+                       TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Margin="0,18,0,0"
+                Padding="18"
+                Background="#0F172ACC"
+                BorderBrush="#2234475E"
+                BorderThickness="1"
+                CornerRadius="18">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="1.2*" />
+                        <ColumnDefinition Width="1.2*" />
+                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                        <TextBlock Style="{DynamicResource LabelStyle}" Text="Hledat podle jména nebo e-mailu" />
+                        <TextBox Style="{DynamicResource TextBoxStyleLocal}"
+                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                        <TextBlock Style="{DynamicResource LabelStyle}" Text="Filtrovat roli" />
+                        <ComboBox Style="{DynamicResource ComboBoxStyleLocal}"
+                                  ItemsSource="{Binding RoleFilters}"
+                                  SelectedItem="{Binding SelectedRoleFilter}"
+                                  DisplayMemberPath="Label" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Margin="0,0,12,0">
+                        <TextBlock Style="{DynamicResource LabelStyle}" Text="Seřadit podle" />
+                        <ComboBox Style="{DynamicResource ComboBoxStyleLocal}"
+                                  ItemsSource="{Binding SortOptions}"
+                                  SelectedItem="{Binding SelectedSortOption}"
+                                  DisplayMemberPath="Label" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="3" Margin="0,0,12,0">
+                        <TextBlock Style="{DynamicResource LabelStyle}" Text="Na stránku" />
+                        <ComboBox Style="{DynamicResource ComboBoxStyleLocal}"
+                                  ItemsSource="{Binding PageSizeOptions}"
+                                  SelectedItem="{Binding SelectedPageSize}" />
+                    </StackPanel>
+
+                    <Button Grid.Column="4"
+                            Width="140"
+                            VerticalAlignment="Bottom"
+                            Style="{DynamicResource SecondaryButtonStyleLocal}"
+                            Command="{Binding ApplyFiltersCommand}"
+                            Content="Načíst seznam" />
+                </Grid>
+
+                <WrapPanel Grid.Row="1" Margin="0,16,0,0">
+                    <Button Width="170"
+                            Style="{DynamicResource PrimaryButtonStyleLocal}"
+                            Command="{Binding CreateNewUserCommand}"
+                            Content="Vytvořit uživatele" />
+                    <Button Width="170"
+                            Style="{DynamicResource SecondaryButtonStyleLocal}"
+                            Command="{Binding EditSelectedUserCommand}"
+                            Content="Otevřít detail" />
+                    <Button Width="150"
+                            Style="{DynamicResource SecondaryButtonStyleLocal}"
+                            Margin="0"
+                            Command="{Binding ResetFiltersCommand}"
+                            Content="Vrátit filtry" />
+                </WrapPanel>
+
+                <TextBlock Grid.Row="2"
+                           Margin="0,16,0,0"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
+                           Text="{Binding StatusMessage}"
+                           TextWrapping="Wrap" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
+                Margin="0,18,0,0"
+                Padding="18"
+                Background="#0F172ACC"
+                BorderBrush="#2234475E"
+                BorderThickness="1"
+                CornerRadius="18">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <ListView Grid.Row="0"
+                          Style="{StaticResource GridListViewStyleLocal}"
+                          ItemsSource="{Binding Users}"
+                          SelectedItem="{Binding SelectedUser}">
+                    <ListView.View>
+                        <GridView ColumnHeaderContainerStyle="{StaticResource GridHeaderStyleLocal}">
+                            <GridViewColumn Header="Uživatel" Width="170" DisplayMemberBinding="{Binding UserName}" />
+                            <GridViewColumn Header="E-mail" Width="220" DisplayMemberBinding="{Binding Email}" />
+                            <GridViewColumn Header="Role" Width="170" DisplayMemberBinding="{Binding RoleDisplay}" />
+                            <GridViewColumn Header="Stav" Width="140" DisplayMemberBinding="{Binding StatusDisplay}" />
+                            <GridViewColumn Header="Kredit" Width="140" DisplayMemberBinding="{Binding CreditBalanceDisplay}" />
+                            <GridViewColumn Header="Sázky" Width="70" DisplayMemberBinding="{Binding BetCountDisplay}" />
+                            <GridViewColumn Header="Poslední aktivita" Width="170" DisplayMemberBinding="{Binding LastActivityDisplay}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+
+                <DockPanel Grid.Row="1" Margin="0,16,0,0" LastChildFill="False">
+                    <TextBlock DockPanel.Dock="Left"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="{Binding PaginationSummary}" />
+
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <TextBlock Margin="0,0,12,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Text="{Binding CurrentPage, StringFormat=Strana {0}}" />
+                        <TextBlock Margin="0,0,16,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
+                                   Text="{Binding TotalPages, StringFormat=z {0}}" />
+                        <Button Width="120"
+                                Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                Command="{Binding PreviousPageCommand}"
+                                Content="Předchozí" />
+                        <Button Width="120"
+                                Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                Margin="0"
+                                Command="{Binding NextPageCommand}"
+                                Content="Další" />
+                    </StackPanel>
+                </DockPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

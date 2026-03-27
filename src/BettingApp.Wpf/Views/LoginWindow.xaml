@@ -63,20 +63,18 @@
             <Setter Property="BorderThickness" Value="1" />
         </Style>
 
-        <Style x:Key="PrimaryButtonStyleLocal" TargetType="Button">
+        <Style x:Key="PrimaryButtonStyleLocal" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
             <Setter Property="Height" Value="44" />
             <Setter Property="MinWidth" Value="170" />
-            <Setter Property="Padding" Value="18,0" />
-            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="20,10" />
             <Setter Property="Background" Value="{StaticResource AccentBrush}" />
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
 
         <Style x:Key="SecondaryButtonStyleLocal" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyleLocal}">
-            <Setter Property="Background" Value="#1E293B" />
+            <Setter Property="Background" Value="#315A86" />
             <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
-            <Setter Property="BorderBrush" Value="#334155" />
+            <Setter Property="BorderBrush" Value="#7FB7E7" />
         </Style>
 
         <Style x:Key="TabControlStyleLocal" TargetType="TabControl">
@@ -91,9 +89,49 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Padding" Value="18,10" />
             <Setter Property="Margin" Value="0,0,10,0" />
-            <Setter Property="Background" Value="#80111C2E" />
-            <Setter Property="BorderBrush" Value="#33E2E8F0" />
+            <Setter Property="Background" Value="#1B2E47" />
+            <Setter Property="BorderBrush" Value="#4D7FB7E7" />
             <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="18,18,8,8"
+                                Margin="{TemplateBinding Margin}">
+                            <Grid>
+                                <Border Margin="1"
+                                        CornerRadius="17,17,7,7"
+                                        BorderBrush="#18FFFFFF"
+                                        BorderThickness="1"
+                                        IsHitTestVisible="False" />
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}"
+                                                  ContentSource="Header"
+                                                  RecognizesAccessKey="True" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#88BFE6FF" />
+                                <Setter TargetName="TabBorder" Property="Background" Value="#294B71" />
+                                <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="#3A628D" />
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#D6F97316" />
+                                <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="TabBorder" Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 

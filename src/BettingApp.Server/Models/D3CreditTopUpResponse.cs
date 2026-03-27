@@ -8,4 +8,5 @@ public sealed record D3CreditTopUpResponse(
     decimal AddedCredits,
     decimal RealMoneyAmount,
     string CurrencyCode,
-    decimal MoneyToCreditRate);
+    decimal MoneyToCreditRate,
+    ElectronicReceiptResponse? IssuedReceipt);

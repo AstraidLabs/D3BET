@@ -54,6 +54,18 @@ public sealed class PlayerApiClient(
         return await ReadAsync<OperationsApiClient.D3CreditBetPlacementResponse>(response, cancellationToken);
     }
 
+    public async Task<CreditWithdrawalResponse> RequestWithdrawalAsync(decimal creditAmount, string currencyCode = "CZK", string? reason = null, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/player/withdrawals", JsonContent.Create(new
+        {
+            creditAmount,
+            currencyCode,
+            reason
+        }));
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<CreditWithdrawalResponse>(response, cancellationToken);
+    }
+
     private HttpRequestMessage CreateRequest(HttpMethod method, string relativeUrl, HttpContent? content = null)
     {
         var request = new HttpRequestMessage(method, $"{authOptions.ServerBaseUrl.TrimEnd('/')}{relativeUrl}");
@@ -142,6 +154,10 @@ public sealed class PlayerApiClient(
         public List<PlayerMarketSummaryResponse> Markets { get; set; } = [];
 
         public List<PlayerBetSummaryResponse> RecentBets { get; set; } = [];
+
+        public List<CreditWithdrawalResponse> RecentWithdrawals { get; set; } = [];
+
+        public List<OperationsApiClient.ElectronicReceiptResponse> RecentReceipts { get; set; } = [];
     }
 
     public sealed class PlayerMarketSummaryResponse
@@ -178,5 +194,36 @@ public sealed class PlayerApiClient(
         public BetOutcomeStatus OutcomeStatus { get; set; }
 
         public DateTime PlacedAtUtc { get; set; }
+    }
+
+    public sealed class CreditWithdrawalResponse
+    {
+        public Guid Id { get; set; }
+
+        public Guid BettorId { get; set; }
+
+        public decimal CreditAmount { get; set; }
+
+        public decimal RealMoneyAmount { get; set; }
+
+        public string RealCurrencyCode { get; set; } = string.Empty;
+
+        public decimal CreditToMoneyRateApplied { get; set; }
+
+        public CreditWithdrawalRequestStatus Status { get; set; }
+
+        public string Reference { get; set; } = string.Empty;
+
+        public string Reason { get; set; } = string.Empty;
+
+        public string? ProcessedReason { get; set; }
+
+        public bool IsAutoProcessed { get; set; }
+
+        public DateTime RequestedAtUtc { get; set; }
+
+        public DateTime? ProcessedAtUtc { get; set; }
+
+        public OperationsApiClient.ElectronicReceiptResponse? IssuedReceipt { get; set; }
     }
 }

@@ -22,6 +22,14 @@ public sealed class Bet
 
     public BetOutcomeStatus OutcomeStatus { get; set; } = BetOutcomeStatus.Pending;
 
+    public bool IsPayoutProcessed { get; set; }
+
+    public DateTime? PayoutProcessedAtUtc { get; set; }
+
+    public decimal PayoutCreditAmount { get; set; }
+
+    public decimal PayoutRealMoneyAmount { get; set; }
+
     public bool IsCommissionFeePaid { get; set; }
 
     public Guid? BettingMarketId { get; set; }

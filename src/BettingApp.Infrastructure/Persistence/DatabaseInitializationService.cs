@@ -6,7 +6,7 @@ namespace BettingApp.Infrastructure.Persistence;
 
 public sealed class DatabaseInitializationService(BettingDbContext dbContext)
 {
-    private const string CurrentBaselineMigrationId = "20260326131502_InitialCreate";
+    private const string CurrentBaselineMigrationId = "20260327113818_InitialCreate";
     private const string EfProductVersion = "10.0.5";
 
     public async Task InitializeAsync(CancellationToken cancellationToken)
@@ -45,8 +45,11 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
         await EnsureBetsTableAsync(connection, cancellationToken);
         await EnsureBettingMarketIdColumnAsync(connection, cancellationToken);
         await EnsureD3CreditColumnsAsync(connection, cancellationToken);
+        await EnsureBetPayoutColumnsAsync(connection, cancellationToken);
         await EnsureBettorWalletsTableAsync(connection, cancellationToken);
         await EnsureD3CreditTransactionsTableAsync(connection, cancellationToken);
+        await EnsureCreditWithdrawalRequestsTableAsync(connection, cancellationToken);
+        await EnsureElectronicReceiptsTableAsync(connection, cancellationToken);
         await EnsureIndexesAsync(connection, cancellationToken);
         await EnsureMigrationHistoryRowAsync(connection, CurrentBaselineMigrationId, cancellationToken);
     }
@@ -67,8 +70,11 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
         await EnsureCommissionFeePaidColumnAsync(connection, cancellationToken);
         await EnsureBettingMarketIdColumnAsync(connection, cancellationToken);
         await EnsureD3CreditColumnsAsync(connection, cancellationToken);
+        await EnsureBetPayoutColumnsAsync(connection, cancellationToken);
         await EnsureBettorWalletsTableAsync(connection, cancellationToken);
         await EnsureD3CreditTransactionsTableAsync(connection, cancellationToken);
+        await EnsureCreditWithdrawalRequestsTableAsync(connection, cancellationToken);
+        await EnsureElectronicReceiptsTableAsync(connection, cancellationToken);
         await EnsureIndexesAsync(connection, cancellationToken);
         await BackfillBettingMarketsAsync(connection, cancellationToken);
     }
@@ -394,6 +400,19 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
         await EnsureColumnAsync(connection, "Bets", "MarketParticipationMultiplierApplied", "ALTER TABLE Bets ADD COLUMN MarketParticipationMultiplierApplied TEXT NOT NULL DEFAULT 1.0;", cancellationToken);
     }
 
+    private static async Task EnsureBetPayoutColumnsAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        if (!await HasTableAsync(connection, "Bets", cancellationToken))
+        {
+            return;
+        }
+
+        await EnsureColumnAsync(connection, "Bets", "IsPayoutProcessed", "ALTER TABLE Bets ADD COLUMN IsPayoutProcessed INTEGER NOT NULL DEFAULT 0;", cancellationToken);
+        await EnsureColumnAsync(connection, "Bets", "PayoutProcessedAtUtc", "ALTER TABLE Bets ADD COLUMN PayoutProcessedAtUtc TEXT NULL;", cancellationToken);
+        await EnsureColumnAsync(connection, "Bets", "PayoutCreditAmount", "ALTER TABLE Bets ADD COLUMN PayoutCreditAmount TEXT NOT NULL DEFAULT 0.0;", cancellationToken);
+        await EnsureColumnAsync(connection, "Bets", "PayoutRealMoneyAmount", "ALTER TABLE Bets ADD COLUMN PayoutRealMoneyAmount TEXT NOT NULL DEFAULT 0.0;", cancellationToken);
+    }
+
     private static async Task EnsureBettorWalletsTableAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
@@ -474,6 +493,61 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    private static async Task EnsureCreditWithdrawalRequestsTableAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS "CreditWithdrawalRequests" (
+                "Id" TEXT NOT NULL CONSTRAINT "PK_CreditWithdrawalRequests" PRIMARY KEY,
+                "BettorId" TEXT NOT NULL,
+                "CreditAmount" TEXT NOT NULL,
+                "RealMoneyAmount" TEXT NOT NULL,
+                "RealCurrencyCode" TEXT NOT NULL,
+                "CreditToMoneyRateApplied" TEXT NOT NULL,
+                "Status" INTEGER NOT NULL,
+                "Reference" TEXT NOT NULL,
+                "Reason" TEXT NOT NULL,
+                "ProcessedReason" TEXT NULL,
+                "IsAutoProcessed" INTEGER NOT NULL DEFAULT 0,
+                "RequestedAtUtc" TEXT NOT NULL,
+                "ProcessedAtUtc" TEXT NULL,
+                CONSTRAINT "FK_CreditWithdrawalRequests_Bettors_BettorId" FOREIGN KEY ("BettorId") REFERENCES "Bettors" ("Id") ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS "IX_CreditWithdrawalRequests_BettorId_RequestedAtUtc" ON "CreditWithdrawalRequests" ("BettorId", "RequestedAtUtc");
+            CREATE INDEX IF NOT EXISTS "IX_CreditWithdrawalRequests_Status" ON "CreditWithdrawalRequests" ("Status");
+            """;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task EnsureElectronicReceiptsTableAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS "ElectronicReceipts" (
+                "Id" TEXT NOT NULL CONSTRAINT "PK_ElectronicReceipts" PRIMARY KEY,
+                "BettorId" TEXT NOT NULL,
+                "Type" INTEGER NOT NULL,
+                "DocumentNumber" TEXT NOT NULL,
+                "Title" TEXT NOT NULL,
+                "Summary" TEXT NOT NULL,
+                "CreditAmount" TEXT NOT NULL,
+                "RealMoneyAmount" TEXT NOT NULL,
+                "RealCurrencyCode" TEXT NOT NULL,
+                "MoneyToCreditRate" TEXT NOT NULL,
+                "CreditToMoneyRate" TEXT NOT NULL,
+                "Reference" TEXT NOT NULL,
+                "RelatedTransactionId" TEXT NULL,
+                "RelatedBetId" TEXT NULL,
+                "RelatedWithdrawalRequestId" TEXT NULL,
+                "IssuedAtUtc" TEXT NOT NULL,
+                CONSTRAINT "FK_ElectronicReceipts_Bettors_BettorId" FOREIGN KEY ("BettorId") REFERENCES "Bettors" ("Id") ON DELETE CASCADE
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_ElectronicReceipts_DocumentNumber" ON "ElectronicReceipts" ("DocumentNumber");
+            CREATE INDEX IF NOT EXISTS "IX_ElectronicReceipts_BettorId_IssuedAtUtc" ON "ElectronicReceipts" ("BettorId", "IssuedAtUtc");
+            """;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private static async Task EnsureIndexesAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
@@ -481,6 +555,7 @@ public sealed class DatabaseInitializationService(BettingDbContext dbContext)
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_Bettors_Name" ON "Bettors" ("Name");
             CREATE INDEX IF NOT EXISTS "IX_Bets_BettingMarketId" ON "Bets" ("BettingMarketId");
             CREATE INDEX IF NOT EXISTS "IX_Bets_BettorId" ON "Bets" ("BettorId");
+            CREATE INDEX IF NOT EXISTS "IX_Bets_OutcomeStatus_IsPayoutProcessed" ON "Bets" ("OutcomeStatus", "IsPayoutProcessed");
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }

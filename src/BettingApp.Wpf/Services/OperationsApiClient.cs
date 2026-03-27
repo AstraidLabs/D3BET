@@ -53,6 +53,124 @@ public sealed class OperationsApiClient(
         return await ReadAsync<List<AuditLogEntryResponse>>(response, cancellationToken);
     }
 
+    public async Task<AdminUserListResponse> GetAdminUsersAsync(
+        string? search = null,
+        string? role = null,
+        string? sort = null,
+        int page = 1,
+        int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new List<string>
+        {
+            $"page={page}",
+            $"pageSize={pageSize}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query.Add($"search={Uri.EscapeDataString(search.Trim())}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            query.Add($"role={Uri.EscapeDataString(role.Trim())}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(sort))
+        {
+            query.Add($"sort={Uri.EscapeDataString(sort.Trim())}");
+        }
+
+        using var request = CreateRequest(HttpMethod.Get, $"/api/operations/users?{string.Join("&", query)}");
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<AdminUserListResponse>(response, cancellationToken);
+    }
+
+    public async Task<AdminUserDetailResponse> GetAdminUserDetailAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/operations/users/{Uri.EscapeDataString(userId)}");
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<AdminUserDetailResponse>(response, cancellationToken);
+    }
+
+    public async Task<AdminUserDetailResponse> CreateAdminUserAsync(
+        string userName,
+        string email,
+        bool emailConfirmed,
+        IReadOnlyCollection<string> roles,
+        string password,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "/api/operations/users", JsonContent.Create(new
+        {
+            userName,
+            email,
+            emailConfirmed,
+            roles,
+            password
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<AdminUserDetailResponse>(response, cancellationToken);
+    }
+
+    public async Task<AdminUserDetailResponse> UpdateAdminUserAsync(
+        string userId,
+        string userName,
+        string email,
+        bool emailConfirmed,
+        IReadOnlyCollection<string> roles,
+        string? password,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Put, $"/api/operations/users/{Uri.EscapeDataString(userId)}", JsonContent.Create(new
+        {
+            userName,
+            email,
+            emailConfirmed,
+            roles,
+            password
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<AdminUserDetailResponse>(response, cancellationToken);
+    }
+
+    public async Task DeleteAdminUserAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Delete, $"/api/operations/users/{Uri.EscapeDataString(userId)}");
+        using var response = await SendAsync(request, cancellationToken);
+    }
+
+    public async Task<AdminUserDetailResponse> ActivateAdminUserAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/users/{Uri.EscapeDataString(userId)}/activate");
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<AdminUserDetailResponse>(response, cancellationToken);
+    }
+
+    public async Task<AdminUserDetailResponse> DeactivateAdminUserAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/users/{Uri.EscapeDataString(userId)}/deactivate");
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<AdminUserDetailResponse>(response, cancellationToken);
+    }
+
+    public async Task<AdminUserDetailResponse> BlockAdminUserAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/users/{Uri.EscapeDataString(userId)}/block");
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<AdminUserDetailResponse>(response, cancellationToken);
+    }
+
+    public async Task<AdminUserDetailResponse> UnblockAdminUserAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/users/{Uri.EscapeDataString(userId)}/unblock");
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<AdminUserDetailResponse>(response, cancellationToken);
+    }
+
     public async Task<Guid> CreateMarketAsync(string eventName, decimal openingOdds, bool isActive, CancellationToken cancellationToken = default)
     {
         using var request = CreateRequest(HttpMethod.Post, "/api/operations/markets", JsonContent.Create(new
@@ -241,6 +359,102 @@ public sealed class OperationsApiClient(
 
         using var response = await SendAsync(request, cancellationToken);
         return await ReadAsync<D3CreditWalletResponse>(response, cancellationToken);
+    }
+
+    public async Task<D3CreditWalletResponse> PayoutD3CreditBetAsync(Guid betId, string reason, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/d3credit/admin/bets/{betId}/payout", JsonContent.Create(new
+        {
+            reason
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<D3CreditWalletResponse>(response, cancellationToken);
+    }
+
+    public async Task<D3CreditWalletResponse> ReverseD3CreditBetPayoutAsync(Guid betId, string reason, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/d3credit/admin/bets/{betId}/payout/reverse", JsonContent.Create(new
+        {
+            reason
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<D3CreditWalletResponse>(response, cancellationToken);
+    }
+
+    public async Task<CreditWithdrawalResponse> ApproveWithdrawalAsync(Guid withdrawalId, string reason, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/d3credit/admin/withdrawals/{withdrawalId}/approve", JsonContent.Create(new
+        {
+            reason
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<CreditWithdrawalResponse>(response, cancellationToken);
+    }
+
+    public async Task<CreditWithdrawalResponse> RejectWithdrawalAsync(Guid withdrawalId, string reason, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/d3credit/admin/withdrawals/{withdrawalId}/reject", JsonContent.Create(new
+        {
+            reason
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<CreditWithdrawalResponse>(response, cancellationToken);
+    }
+
+    public async Task<LicenseAdminOverviewResponse> GetLicenseOverviewAsync(int auditLimit = 40, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Get, $"/api/operations/licensing?auditLimit={auditLimit}");
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<LicenseAdminOverviewResponse>(response, cancellationToken);
+    }
+
+    public async Task<LicenseAdminOverviewResponse> RevokeLicenseAsync(string licenseId, string? reason, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/licensing/licenses/{Uri.EscapeDataString(licenseId)}/revoke", JsonContent.Create(new
+        {
+            reason
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<LicenseAdminOverviewResponse>(response, cancellationToken);
+    }
+
+    public async Task<LicenseAdminOverviewResponse> RestoreLicenseAsync(string licenseId, string? reason, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/licensing/licenses/{Uri.EscapeDataString(licenseId)}/restore", JsonContent.Create(new
+        {
+            reason
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<LicenseAdminOverviewResponse>(response, cancellationToken);
+    }
+
+    public async Task<LicenseAdminOverviewResponse> ReleaseLicenseAsync(string licenseId, string? reason, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/licensing/licenses/{Uri.EscapeDataString(licenseId)}/release", JsonContent.Create(new
+        {
+            reason
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<LicenseAdminOverviewResponse>(response, cancellationToken);
+    }
+
+    public async Task<LicenseAdminOverviewResponse> ExtendLicenseAsync(string licenseId, int additionalDays, string? reason, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"/api/operations/licensing/licenses/{Uri.EscapeDataString(licenseId)}/extend", JsonContent.Create(new
+        {
+            additionalDays,
+            reason
+        }));
+
+        using var response = await SendAsync(request, cancellationToken);
+        return await ReadAsync<LicenseAdminOverviewResponse>(response, cancellationToken);
     }
 
     private HttpRequestMessage CreateRequest(HttpMethod method, string relativeUrl, HttpContent? content = null)
@@ -568,6 +782,8 @@ public sealed class OperationsApiClient(
         public string CurrencyCode { get; set; } = string.Empty;
 
         public decimal MoneyToCreditRate { get; set; }
+
+        public ElectronicReceiptResponse? IssuedReceipt { get; set; }
     }
 
     public sealed class D3CreditQuoteResponse
@@ -634,6 +850,12 @@ public sealed class OperationsApiClient(
 
         public bool EnableManualBetRefunds { get; set; }
 
+        public bool EnablePlayerWithdrawals { get; set; }
+
+        public bool AutoApproveWithdrawals { get; set; }
+
+        public bool AutoPayoutWinningBets { get; set; }
+
         public decimal DefaultTopUpAmount { get; set; }
 
         public List<D3CreditMarketAdminRuleResponse> MarketRules { get; set; } = [];
@@ -698,5 +920,248 @@ public sealed class OperationsApiClient(
         public string Description { get; set; } = string.Empty;
 
         public DateTime CreatedAtUtc { get; set; }
+    }
+
+    public sealed class AdminUserListResponse
+    {
+        public int Page { get; set; }
+
+        public int PageSize { get; set; }
+
+        public int TotalCount { get; set; }
+
+        public string[] AvailableRoles { get; set; } = [];
+
+        public List<AdminUserListItemResponse> Items { get; set; } = [];
+    }
+
+    public sealed class AdminUserListItemResponse
+    {
+        public string Id { get; set; } = string.Empty;
+
+        public string UserName { get; set; } = string.Empty;
+
+        public string? Email { get; set; }
+
+        public bool EmailConfirmed { get; set; }
+
+        public bool IsBlocked { get; set; }
+
+        public string[] Roles { get; set; } = [];
+
+        public Guid? BettorId { get; set; }
+
+        public decimal CreditBalance { get; set; }
+
+        public string CreditCode { get; set; } = "D3Kredit";
+
+        public int BetCount { get; set; }
+
+        public DateTime? LastBetPlacedAtUtc { get; set; }
+    }
+
+    public sealed class AdminUserDetailResponse
+    {
+        public string Id { get; set; } = string.Empty;
+
+        public string UserName { get; set; } = string.Empty;
+
+        public string? Email { get; set; }
+
+        public bool EmailConfirmed { get; set; }
+
+        public bool IsBlocked { get; set; }
+
+        public string[] Roles { get; set; } = [];
+
+        public string[] AvailableRoles { get; set; } = [];
+
+        public Guid? BettorId { get; set; }
+
+        public AdminUserWalletResponse Wallet { get; set; } = new();
+
+        public List<AdminUserBetResponse> Bets { get; set; } = [];
+
+        public List<AdminUserCreditTransactionResponse> Transactions { get; set; } = [];
+
+        public List<CreditWithdrawalResponse> Withdrawals { get; set; } = [];
+
+        public List<ElectronicReceiptResponse> Receipts { get; set; } = [];
+    }
+
+    public sealed class AdminUserWalletResponse
+    {
+        public Guid? BettorId { get; set; }
+
+        public string DisplayName { get; set; } = string.Empty;
+
+        public decimal Balance { get; set; }
+
+        public string CreditCode { get; set; } = "D3Kredit";
+
+        public decimal MoneyToCreditRate { get; set; }
+
+        public decimal CreditToMoneyRate { get; set; }
+    }
+
+    public sealed class AdminUserBetResponse
+    {
+        public Guid Id { get; set; }
+
+        public Guid? BettingMarketId { get; set; }
+
+        public string EventName { get; set; } = string.Empty;
+
+        public decimal Odds { get; set; }
+
+        public decimal Stake { get; set; }
+
+        public string StakeCurrencyCode { get; set; } = string.Empty;
+
+        public decimal StakeRealMoneyEquivalent { get; set; }
+
+        public decimal PotentialPayout { get; set; }
+
+        public BetOutcomeStatus OutcomeStatus { get; set; }
+
+        public bool IsPayoutProcessed { get; set; }
+
+        public DateTime PlacedAtUtc { get; set; }
+    }
+
+    public sealed class AdminUserCreditTransactionResponse
+    {
+        public Guid Id { get; set; }
+
+        public D3CreditTransactionType Type { get; set; }
+
+        public decimal CreditAmount { get; set; }
+
+        public decimal RealMoneyAmount { get; set; }
+
+        public string RealCurrencyCode { get; set; } = string.Empty;
+
+        public string Description { get; set; } = string.Empty;
+
+        public string Reference { get; set; } = string.Empty;
+
+        public DateTime CreatedAtUtc { get; set; }
+    }
+
+    public sealed class CreditWithdrawalResponse
+    {
+        public Guid Id { get; set; }
+
+        public Guid BettorId { get; set; }
+
+        public decimal CreditAmount { get; set; }
+
+        public decimal RealMoneyAmount { get; set; }
+
+        public string RealCurrencyCode { get; set; } = string.Empty;
+
+        public decimal CreditToMoneyRateApplied { get; set; }
+
+        public CreditWithdrawalRequestStatus Status { get; set; }
+
+        public string Reference { get; set; } = string.Empty;
+
+        public string Reason { get; set; } = string.Empty;
+
+        public string? ProcessedReason { get; set; }
+
+        public bool IsAutoProcessed { get; set; }
+
+        public DateTime RequestedAtUtc { get; set; }
+
+        public DateTime? ProcessedAtUtc { get; set; }
+
+        public ElectronicReceiptResponse? IssuedReceipt { get; set; }
+    }
+
+    public sealed class ElectronicReceiptResponse
+    {
+        public Guid Id { get; set; }
+
+        public ElectronicReceiptType Type { get; set; }
+
+        public string DocumentNumber { get; set; } = string.Empty;
+
+        public string Title { get; set; } = string.Empty;
+
+        public string Summary { get; set; } = string.Empty;
+
+        public decimal CreditAmount { get; set; }
+
+        public decimal RealMoneyAmount { get; set; }
+
+        public string RealCurrencyCode { get; set; } = string.Empty;
+
+        public decimal MoneyToCreditRate { get; set; }
+
+        public decimal CreditToMoneyRate { get; set; }
+
+        public string Reference { get; set; } = string.Empty;
+
+        public DateTime IssuedAtUtc { get; set; }
+    }
+
+    public sealed class LicenseAdminOverviewResponse
+    {
+        public string ServerInstanceId { get; set; } = string.Empty;
+
+        public int TotalLicenses { get; set; }
+
+        public int ActiveLicenses { get; set; }
+
+        public int RevokedLicenses { get; set; }
+
+        public int ExpiringSoonLicenses { get; set; }
+
+        public List<LicenseAdminItemResponse> Licenses { get; set; } = [];
+
+        public List<LicenseAuditEntryResponse> AuditEntries { get; set; } = [];
+    }
+
+    public sealed class LicenseAdminItemResponse
+    {
+        public string LicenseId { get; set; } = string.Empty;
+
+        public string Email { get; set; } = string.Empty;
+
+        public string CustomerName { get; set; } = string.Empty;
+
+        public string InstallationId { get; set; } = string.Empty;
+
+        public bool IsRevoked { get; set; }
+
+        public bool IsExpiringSoon { get; set; }
+
+        public DateTime IssuedAtUtc { get; set; }
+
+        public DateTime ExpiresAtUtc { get; set; }
+
+        public DateTime? LastValidatedAtUtc { get; set; }
+
+        public string StatusLabel { get; set; } = string.Empty;
+    }
+
+    public sealed class LicenseAuditEntryResponse
+    {
+        public Guid Id { get; set; }
+
+        public DateTime CreatedAtUtc { get; set; }
+
+        public string LicenseId { get; set; } = string.Empty;
+
+        public string EventType { get; set; } = string.Empty;
+
+        public string DisplayMessage { get; set; } = string.Empty;
+
+        public string Email { get; set; } = string.Empty;
+
+        public string InstallationId { get; set; } = string.Empty;
+
+        public bool IsSuccessful { get; set; }
     }
 }

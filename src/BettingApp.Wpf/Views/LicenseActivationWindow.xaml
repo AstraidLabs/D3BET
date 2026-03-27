@@ -1,0 +1,44 @@
+<Window x:Class="BettingApp.Wpf.Views.LicenseActivationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Aktivace licence D3Bet"
+        Width="620"
+        Height="420"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource WindowBackgroundBrush}"
+        FontFamily="{StaticResource AppFontFamily}">
+    <Grid Margin="24">
+        <Border Padding="28" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource PanelBorderBrush}" BorderThickness="1" CornerRadius="30">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock FontSize="{StaticResource FontSizeMeta}" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Text="D3BET LICENSE" />
+                <TextBlock Grid.Row="1" Margin="0,10,0,0" FontSize="{StaticResource FontSizePanelTitle}" FontWeight="SemiBold" Foreground="{StaticResource PrimaryTextBrush}" Text="Nejdřív propojte klienta se serverem" />
+                <TextBlock Grid.Row="2" Margin="0,10,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="Bez aktivní licence si klient nestáhne bezpečnou konfiguraci serveru ani nepokračuje do přihlášení." TextWrapping="Wrap" />
+
+                <StackPanel Grid.Row="3" Margin="0,22,0,0">
+                    <TextBlock Margin="0,0,0,6" Foreground="{StaticResource SecondaryTextBrush}" Text="Licenční e-mail" />
+                    <TextBox Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Margin="0,16,0,6" Foreground="{StaticResource SecondaryTextBrush}" Text="Licenční klíč (Base64)" />
+                    <TextBox Text="{Binding ActivationKeyBase64, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <Border Grid.Row="4" Margin="0,20,0,0" Padding="14" Background="#0F172ACC" BorderBrush="#2234475E" BorderThickness="1" CornerRadius="18">
+                    <TextBlock Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+                </Border>
+
+                <StackPanel Grid.Row="5" Margin="0,20,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button MinWidth="180" Content="Aktivovat licenci" Click="ActivateAndClose" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

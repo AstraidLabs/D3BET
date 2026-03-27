@@ -69,7 +69,7 @@ public sealed class D3CreditService(
         wallet.LastCreditToMoneyRate = quote.CreditToMoneyRate;
         wallet.UpdatedAtUtc = DateTime.UtcNow;
 
-        dbContext.D3CreditTransactions.Add(new D3CreditTransaction
+        var transaction = new D3CreditTransaction
         {
             BettorId = bettor.Id,
             Type = D3CreditTransactionType.TopUp,
@@ -81,7 +81,22 @@ public sealed class D3CreditService(
             MarketParticipationMultiplier = quote.MarketParticipationMultiplier,
             Reference = payment.PaymentReference,
             Description = $"Dobití peněženky {settings.CreditCode} přes testovací gateway."
-        });
+        };
+        dbContext.D3CreditTransactions.Add(transaction);
+
+        var receipt = CreateElectronicReceipt(
+            bettor.Id,
+            ElectronicReceiptType.CreditTopUp,
+            "Elektronický doklad o dobití kreditu",
+            $"Potvrzení o převodu {request.RealMoneyAmount:0.00} {currencyCode} do peněženky {settings.CreditCode}. Připsáno bylo {quote.CreditAmount:0.00} {settings.CreditCode}.",
+            quote.CreditAmount,
+            request.RealMoneyAmount,
+            currencyCode,
+            quote.MoneyToCreditRate,
+            quote.CreditToMoneyRate,
+            payment.PaymentReference,
+            transaction.Id);
+        dbContext.ElectronicReceipts.Add(receipt);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -93,7 +108,8 @@ public sealed class D3CreditService(
             quote.CreditAmount,
             request.RealMoneyAmount,
             currencyCode,
-            quote.MoneyToCreditRate);
+            quote.MoneyToCreditRate,
+            MapReceipt(receipt));
     }
 
     public Task<D3CreditQuoteResponse> QuoteAsync(Guid marketId, D3CreditQuoteRequest request, CancellationToken cancellationToken)
@@ -263,28 +279,39 @@ public sealed class D3CreditService(
             var wallet = await dbContext.BettorWallets.FirstOrDefaultAsync(x => x.BettorId == bet.BettorId, cancellationToken)
                 ?? throw new InvalidOperationException("Peněženka sázejícího nebyla nalezena.");
 
+            if (bet.IsPayoutProcessed)
+            {
+                await ReverseBetPayoutInternalAsync(
+                    bet,
+                    wallet,
+                    settings,
+                    "Odebrání už připsané výhry při mazání sázky.",
+                    cancellationToken);
+            }
+
             var refundCredits = bet.OutcomeStatus == BetOutcomeStatus.Won
-                ? -bet.PotentialPayout
+                ? 0m
                 : bet.Stake;
 
-            wallet.Balance += refundCredits;
-            wallet.UpdatedAtUtc = DateTime.UtcNow;
-
-            dbContext.D3CreditTransactions.Add(new D3CreditTransaction
+            if (refundCredits != 0m)
             {
-                BettorId = bet.BettorId,
-                Type = D3CreditTransactionType.ManualAdjustment,
-                CreditAmount = refundCredits,
-                RealMoneyAmount = Math.Round(refundCredits * bet.CreditToMoneyRateApplied, 2, MidpointRounding.AwayFromZero),
-                RealCurrencyCode = settings.BaseCurrencyCode,
-                MoneyToCreditRate = wallet.LastMoneyToCreditRate,
-                CreditToMoneyRate = bet.CreditToMoneyRateApplied,
-                MarketParticipationMultiplier = bet.MarketParticipationMultiplierApplied,
-                Reference = bet.Id.ToString(),
-                Description = bet.OutcomeStatus == BetOutcomeStatus.Won
-                    ? "Reverze vyplacené výhry při smazání kreditové sázky."
-                    : "Vrácení vkladu při smazání kreditové sázky."
-            });
+                wallet.Balance += refundCredits;
+                wallet.UpdatedAtUtc = DateTime.UtcNow;
+
+                dbContext.D3CreditTransactions.Add(new D3CreditTransaction
+                {
+                    BettorId = bet.BettorId,
+                    Type = D3CreditTransactionType.ManualAdjustment,
+                    CreditAmount = refundCredits,
+                    RealMoneyAmount = Math.Round(refundCredits * bet.CreditToMoneyRateApplied, 2, MidpointRounding.AwayFromZero),
+                    RealCurrencyCode = settings.BaseCurrencyCode,
+                    MoneyToCreditRate = wallet.LastMoneyToCreditRate,
+                    CreditToMoneyRate = bet.CreditToMoneyRateApplied,
+                    MarketParticipationMultiplier = bet.MarketParticipationMultiplierApplied,
+                    Reference = bet.Id.ToString(),
+                    Description = "Vrácení vkladu při smazání kreditové sázky."
+                });
+            }
         }
 
         dbContext.Bets.Remove(bet);
@@ -314,39 +341,24 @@ public sealed class D3CreditService(
             var wallet = await dbContext.BettorWallets.FirstOrDefaultAsync(x => x.BettorId == bet.BettorId, cancellationToken)
                 ?? throw new InvalidOperationException("Peněženka sázejícího nebyla nalezena.");
 
-            decimal creditDelta = 0m;
-            string? description = null;
-
-            if (bet.OutcomeStatus == BetOutcomeStatus.Won && outcomeStatus != BetOutcomeStatus.Won)
+            if (bet.IsPayoutProcessed && outcomeStatus != BetOutcomeStatus.Won)
             {
-                creditDelta -= bet.PotentialPayout;
-                description = "Reverze dříve vyplacené kreditové výhry.";
+                await ReverseBetPayoutInternalAsync(
+                    bet,
+                    wallet,
+                    settings,
+                    "Reverze dříve připsané výhry po změně výsledku sázky.",
+                    cancellationToken);
             }
 
-            if (bet.OutcomeStatus != BetOutcomeStatus.Won && outcomeStatus == BetOutcomeStatus.Won)
+            if (outcomeStatus == BetOutcomeStatus.Won && settings.AutoPayoutWinningBets && !bet.IsPayoutProcessed)
             {
-                creditDelta += bet.PotentialPayout;
-                description = "Výplata kreditové výhry do peněženky sázejícího.";
-            }
-
-            if (creditDelta != 0m)
-            {
-                wallet.Balance += creditDelta;
-                wallet.UpdatedAtUtc = DateTime.UtcNow;
-
-                dbContext.D3CreditTransactions.Add(new D3CreditTransaction
-                {
-                    BettorId = bet.BettorId,
-                    Type = D3CreditTransactionType.BetPayout,
-                    CreditAmount = creditDelta,
-                    RealMoneyAmount = Math.Round(creditDelta * bet.CreditToMoneyRateApplied, 2, MidpointRounding.AwayFromZero),
-                    RealCurrencyCode = settings.BaseCurrencyCode,
-                    MoneyToCreditRate = wallet.LastMoneyToCreditRate,
-                    CreditToMoneyRate = bet.CreditToMoneyRateApplied,
-                    MarketParticipationMultiplier = bet.MarketParticipationMultiplierApplied,
-                    Reference = bet.Id.ToString(),
-                    Description = description ?? "Změna vyhodnocení kreditové sázky."
-                });
+                await ApplyWinningPayoutInternalAsync(
+                    bet,
+                    wallet,
+                    settings,
+                    "Automatické připsání výhry po vyhodnocení sázky.",
+                    cancellationToken);
             }
         }
 
@@ -528,6 +540,451 @@ public sealed class D3CreditService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return await BuildWalletResponseAsync(bet.BettorId, cancellationToken);
+    }
+
+    public async Task<D3CreditWalletResponse> PayoutWinningBetAsync(Guid betId, string? reason, CancellationToken cancellationToken)
+    {
+        var settings = await adminSettingsStore.LoadAsync(cancellationToken);
+        var bet = await dbContext.Bets.FirstOrDefaultAsync(x => x.Id == betId, cancellationToken)
+            ?? throw new InvalidOperationException("Sázka nebyla nalezena.");
+
+        if (!string.Equals(bet.StakeCurrencyCode, settings.CreditCode, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Ruční výplatu lze provést jen u kreditové sázky.");
+        }
+
+        if (bet.OutcomeStatus != BetOutcomeStatus.Won)
+        {
+            throw new InvalidOperationException("Výplatu lze provést jen u výherní sázky.");
+        }
+
+        var wallet = await dbContext.BettorWallets.FirstOrDefaultAsync(x => x.BettorId == bet.BettorId, cancellationToken)
+            ?? throw new InvalidOperationException("Peněženka sázejícího nebyla nalezena.");
+
+        await ApplyWinningPayoutInternalAsync(
+            bet,
+            wallet,
+            settings,
+            string.IsNullOrWhiteSpace(reason) ? "Ruční připsání výhry administrátorem." : reason.Trim(),
+            cancellationToken);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await BuildWalletResponseAsync(bet.BettorId, cancellationToken);
+    }
+
+    public async Task<D3CreditWalletResponse> ReverseWinningPayoutAsync(Guid betId, string? reason, CancellationToken cancellationToken)
+    {
+        var settings = await adminSettingsStore.LoadAsync(cancellationToken);
+        var bet = await dbContext.Bets.FirstOrDefaultAsync(x => x.Id == betId, cancellationToken)
+            ?? throw new InvalidOperationException("Sázka nebyla nalezena.");
+
+        if (!string.Equals(bet.StakeCurrencyCode, settings.CreditCode, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Odebrat výhru lze jen u kreditové sázky.");
+        }
+
+        var wallet = await dbContext.BettorWallets.FirstOrDefaultAsync(x => x.BettorId == bet.BettorId, cancellationToken)
+            ?? throw new InvalidOperationException("Peněženka sázejícího nebyla nalezena.");
+
+        await ReverseBetPayoutInternalAsync(
+            bet,
+            wallet,
+            settings,
+            string.IsNullOrWhiteSpace(reason) ? "Odebrání dříve připsané výhry administrátorem." : reason.Trim(),
+            cancellationToken);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await BuildWalletResponseAsync(bet.BettorId, cancellationToken);
+    }
+
+    public async Task<CreditWithdrawalResponse> RequestWithdrawalAsync(Guid bettorId, string? reason, string? currencyCode, decimal creditAmount, CancellationToken cancellationToken)
+    {
+        var settings = await adminSettingsStore.LoadAsync(cancellationToken);
+        if (!settings.EnablePlayerWithdrawals)
+        {
+            throw new InvalidOperationException("Výběr kreditu zpět do měny je momentálně vypnutý.");
+        }
+
+        if (creditAmount <= 0m)
+        {
+            throw new InvalidOperationException("Částka výběru musí být větší než 0.");
+        }
+
+        var bettor = await dbContext.Bettors
+            .Include(x => x.Wallet)
+            .FirstOrDefaultAsync(x => x.Id == bettorId, cancellationToken)
+            ?? throw new InvalidOperationException("Sázející nebyl nalezen.");
+        var wallet = bettor.Wallet ?? throw new InvalidOperationException("Peněženka sázejícího nebyla nalezena.");
+
+        if (wallet.Balance < creditAmount)
+        {
+            throw new InvalidOperationException($"Na výběr není dostatek {wallet.CreditCode}.");
+        }
+
+        var normalizedCurrencyCode = string.IsNullOrWhiteSpace(currencyCode)
+            ? settings.BaseCurrencyCode
+            : currencyCode.Trim().ToUpperInvariant();
+        var realMoneyAmount = Math.Round(creditAmount * wallet.LastCreditToMoneyRate, 2, MidpointRounding.AwayFromZero);
+        var withdrawal = new CreditWithdrawalRequest
+        {
+            BettorId = bettor.Id,
+            CreditAmount = creditAmount,
+            RealMoneyAmount = realMoneyAmount,
+            RealCurrencyCode = normalizedCurrencyCode,
+            CreditToMoneyRateApplied = wallet.LastCreditToMoneyRate,
+            Status = settings.AutoApproveWithdrawals ? CreditWithdrawalRequestStatus.Paid : CreditWithdrawalRequestStatus.Pending,
+            Reference = $"WD-{DateTime.UtcNow:yyyyMMddHHmmss}-{bettor.Id.ToString()[..8]}",
+            Reason = string.IsNullOrWhiteSpace(reason) ? "Výběr kreditu hráčem do reálné měny." : reason.Trim(),
+            IsAutoProcessed = settings.AutoApproveWithdrawals,
+            RequestedAtUtc = DateTime.UtcNow,
+            ProcessedAtUtc = settings.AutoApproveWithdrawals ? DateTime.UtcNow : null,
+            ProcessedReason = settings.AutoApproveWithdrawals ? "Výběr byl automaticky schválen systémem." : null
+        };
+
+        wallet.Balance -= creditAmount;
+        wallet.UpdatedAtUtc = DateTime.UtcNow;
+
+        dbContext.CreditWithdrawalRequests.Add(withdrawal);
+        var transaction = new D3CreditTransaction
+        {
+            BettorId = bettor.Id,
+            Type = D3CreditTransactionType.WithdrawalRequest,
+            CreditAmount = -creditAmount,
+            RealMoneyAmount = -realMoneyAmount,
+            RealCurrencyCode = normalizedCurrencyCode,
+            MoneyToCreditRate = wallet.LastMoneyToCreditRate,
+            CreditToMoneyRate = wallet.LastCreditToMoneyRate,
+            MarketParticipationMultiplier = 1m,
+            Reference = withdrawal.Reference,
+            Description = settings.AutoApproveWithdrawals
+                ? "Automaticky zpracovaný výběr kreditu do reálné měny."
+                : "Žádost o převod D3Kreditu zpět do reálné měny."
+        };
+        dbContext.D3CreditTransactions.Add(transaction);
+
+        if (settings.AutoApproveWithdrawals)
+        {
+            dbContext.ElectronicReceipts.Add(CreateElectronicReceipt(
+                bettor.Id,
+                ElectronicReceiptType.WithdrawalPayout,
+                "Elektronický doklad o výplatě do měny",
+                $"Výplata {realMoneyAmount:0.00} {normalizedCurrencyCode} byla schválená automaticky. Z peněženky bylo odečteno {creditAmount:0.00} {wallet.CreditCode}.",
+                creditAmount,
+                realMoneyAmount,
+                normalizedCurrencyCode,
+                wallet.LastMoneyToCreditRate,
+                wallet.LastCreditToMoneyRate,
+                withdrawal.Reference,
+                transaction.Id,
+                withdrawalRequestId: withdrawal.Id));
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await MapWithdrawalAsync(withdrawal.Id, cancellationToken);
+    }
+
+    public async Task<CreditWithdrawalResponse> ApproveWithdrawalAsync(Guid withdrawalId, string? reason, CancellationToken cancellationToken)
+    {
+        var withdrawal = await dbContext.CreditWithdrawalRequests.FirstOrDefaultAsync(x => x.Id == withdrawalId, cancellationToken)
+            ?? throw new InvalidOperationException("Požadavek na výběr nebyl nalezen.");
+
+        if (withdrawal.Status != CreditWithdrawalRequestStatus.Pending)
+        {
+            throw new InvalidOperationException("Schválit lze jen čekající požadavek na výběr.");
+        }
+
+        withdrawal.Status = CreditWithdrawalRequestStatus.Paid;
+        withdrawal.ProcessedAtUtc = DateTime.UtcNow;
+        withdrawal.ProcessedReason = string.IsNullOrWhiteSpace(reason)
+            ? "Výběr byl schválen administrátorem."
+            : reason.Trim();
+
+        dbContext.ElectronicReceipts.Add(CreateElectronicReceipt(
+            withdrawal.BettorId,
+            ElectronicReceiptType.WithdrawalPayout,
+            "Elektronický doklad o výplatě do měny",
+            $"Hráči byla vyplacena částka {withdrawal.RealMoneyAmount:0.00} {withdrawal.RealCurrencyCode} výměnou za {withdrawal.CreditAmount:0.00} D3Kredit.",
+            withdrawal.CreditAmount,
+            withdrawal.RealMoneyAmount,
+            withdrawal.RealCurrencyCode,
+            0m,
+            withdrawal.CreditToMoneyRateApplied,
+            withdrawal.Reference,
+            withdrawalRequestId: withdrawal.Id));
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await MapWithdrawalAsync(withdrawal.Id, cancellationToken);
+    }
+
+    public async Task<CreditWithdrawalResponse> RejectWithdrawalAsync(Guid withdrawalId, string? reason, CancellationToken cancellationToken)
+    {
+        var withdrawal = await dbContext.CreditWithdrawalRequests.FirstOrDefaultAsync(x => x.Id == withdrawalId, cancellationToken)
+            ?? throw new InvalidOperationException("Požadavek na výběr nebyl nalezen.");
+
+        if (withdrawal.Status != CreditWithdrawalRequestStatus.Pending)
+        {
+            throw new InvalidOperationException("Zamítnout lze jen čekající požadavek na výběr.");
+        }
+
+        var settings = await adminSettingsStore.LoadAsync(cancellationToken);
+        var wallet = await dbContext.BettorWallets.FirstOrDefaultAsync(x => x.BettorId == withdrawal.BettorId, cancellationToken)
+            ?? throw new InvalidOperationException("Peněženka sázejícího nebyla nalezena.");
+
+        wallet.Balance += withdrawal.CreditAmount;
+        wallet.UpdatedAtUtc = DateTime.UtcNow;
+        withdrawal.Status = CreditWithdrawalRequestStatus.Rejected;
+        withdrawal.ProcessedAtUtc = DateTime.UtcNow;
+        withdrawal.ProcessedReason = string.IsNullOrWhiteSpace(reason)
+            ? "Výběr byl zamítnut administrátorem a kredit byl vrácen."
+            : reason.Trim();
+
+        dbContext.D3CreditTransactions.Add(new D3CreditTransaction
+        {
+            BettorId = withdrawal.BettorId,
+            Type = D3CreditTransactionType.WithdrawalCancelled,
+            CreditAmount = withdrawal.CreditAmount,
+            RealMoneyAmount = withdrawal.RealMoneyAmount,
+            RealCurrencyCode = withdrawal.RealCurrencyCode,
+            MoneyToCreditRate = wallet.LastMoneyToCreditRate,
+            CreditToMoneyRate = withdrawal.CreditToMoneyRateApplied,
+            MarketParticipationMultiplier = 1m,
+            Reference = withdrawal.Reference,
+            Description = withdrawal.ProcessedReason
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await MapWithdrawalAsync(withdrawal.Id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<CreditWithdrawalResponse>> GetRecentWithdrawalsAsync(Guid bettorId, int limit, CancellationToken cancellationToken)
+    {
+        return await dbContext.CreditWithdrawalRequests
+            .AsNoTracking()
+            .Where(x => x.BettorId == bettorId)
+            .OrderByDescending(x => x.RequestedAtUtc)
+            .Take(Math.Clamp(limit, 1, 50))
+            .Select(x => new CreditWithdrawalResponse(
+                x.Id,
+                x.BettorId,
+                x.CreditAmount,
+                x.RealMoneyAmount,
+                x.RealCurrencyCode,
+                x.CreditToMoneyRateApplied,
+                x.Status,
+                x.Reference,
+                x.Reason,
+                x.ProcessedReason,
+                x.IsAutoProcessed,
+                x.RequestedAtUtc,
+                x.ProcessedAtUtc,
+                null))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ElectronicReceiptResponse>> GetRecentReceiptsAsync(Guid bettorId, int limit, CancellationToken cancellationToken)
+    {
+        return await dbContext.ElectronicReceipts
+            .AsNoTracking()
+            .Where(x => x.BettorId == bettorId)
+            .OrderByDescending(x => x.IssuedAtUtc)
+            .Take(Math.Clamp(limit, 1, 50))
+            .Select(x => new ElectronicReceiptResponse(
+                x.Id,
+                x.Type,
+                x.DocumentNumber,
+                x.Title,
+                x.Summary,
+                x.CreditAmount,
+                x.RealMoneyAmount,
+                x.RealCurrencyCode,
+                x.MoneyToCreditRate,
+                x.CreditToMoneyRate,
+                x.Reference,
+                x.IssuedAtUtc))
+            .ToListAsync(cancellationToken);
+    }
+
+    private async Task ApplyWinningPayoutInternalAsync(
+        Bet bet,
+        BettorWallet wallet,
+        D3CreditAdminSettingsResponse settings,
+        string description,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (bet.IsPayoutProcessed)
+        {
+            throw new InvalidOperationException("Výhra už byla dříve připsána.");
+        }
+
+        var creditDelta = bet.PotentialPayout;
+        var realMoneyDelta = Math.Round(creditDelta * bet.CreditToMoneyRateApplied, 2, MidpointRounding.AwayFromZero);
+
+        wallet.Balance += creditDelta;
+        wallet.UpdatedAtUtc = DateTime.UtcNow;
+        bet.IsPayoutProcessed = true;
+        bet.PayoutProcessedAtUtc = DateTime.UtcNow;
+        bet.PayoutCreditAmount = creditDelta;
+        bet.PayoutRealMoneyAmount = realMoneyDelta;
+
+        var transaction = new D3CreditTransaction
+        {
+            BettorId = bet.BettorId,
+            Type = D3CreditTransactionType.BetPayout,
+            CreditAmount = creditDelta,
+            RealMoneyAmount = realMoneyDelta,
+            RealCurrencyCode = settings.BaseCurrencyCode,
+            MoneyToCreditRate = wallet.LastMoneyToCreditRate,
+            CreditToMoneyRate = bet.CreditToMoneyRateApplied,
+            MarketParticipationMultiplier = bet.MarketParticipationMultiplierApplied,
+            Reference = bet.Id.ToString(),
+            Description = description
+        };
+        dbContext.D3CreditTransactions.Add(transaction);
+        dbContext.ElectronicReceipts.Add(CreateElectronicReceipt(
+            bet.BettorId,
+            ElectronicReceiptType.WinningPayout,
+            "Elektronický doklad o připsání výhry",
+            $"Výhra ze sázky na událost {bet.EventName} byla připsaná do hráčské peněženky. Připsáno bylo {creditDelta:0.00} {settings.CreditCode}.",
+            creditDelta,
+            realMoneyDelta,
+            settings.BaseCurrencyCode,
+            wallet.LastMoneyToCreditRate,
+            bet.CreditToMoneyRateApplied,
+            bet.Id.ToString(),
+            transaction.Id,
+            bet.Id));
+    }
+
+    private async Task ReverseBetPayoutInternalAsync(
+        Bet bet,
+        BettorWallet wallet,
+        D3CreditAdminSettingsResponse settings,
+        string description,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!bet.IsPayoutProcessed)
+        {
+            throw new InvalidOperationException("Výhra zatím nebyla připsána, není co odebrat.");
+        }
+
+        if (wallet.Balance < bet.PayoutCreditAmount)
+        {
+            throw new InvalidOperationException($"Na peněžence není dostatek {settings.CreditCode} pro odebrání už připsané výhry.");
+        }
+
+        wallet.Balance -= bet.PayoutCreditAmount;
+        wallet.UpdatedAtUtc = DateTime.UtcNow;
+
+        dbContext.D3CreditTransactions.Add(new D3CreditTransaction
+        {
+            BettorId = bet.BettorId,
+            Type = D3CreditTransactionType.BetPayoutReversal,
+            CreditAmount = -bet.PayoutCreditAmount,
+            RealMoneyAmount = -bet.PayoutRealMoneyAmount,
+            RealCurrencyCode = settings.BaseCurrencyCode,
+            MoneyToCreditRate = wallet.LastMoneyToCreditRate,
+            CreditToMoneyRate = bet.CreditToMoneyRateApplied,
+            MarketParticipationMultiplier = bet.MarketParticipationMultiplierApplied,
+            Reference = bet.Id.ToString(),
+            Description = description
+        });
+
+        bet.IsPayoutProcessed = false;
+        bet.PayoutProcessedAtUtc = null;
+        bet.PayoutCreditAmount = 0m;
+        bet.PayoutRealMoneyAmount = 0m;
+    }
+
+    private static ElectronicReceipt CreateElectronicReceipt(
+        Guid bettorId,
+        ElectronicReceiptType type,
+        string title,
+        string summary,
+        decimal creditAmount,
+        decimal realMoneyAmount,
+        string realCurrencyCode,
+        decimal moneyToCreditRate,
+        decimal creditToMoneyRate,
+        string reference,
+        Guid? transactionId = null,
+        Guid? betId = null,
+        Guid? withdrawalRequestId = null)
+    {
+        return new ElectronicReceipt
+        {
+            BettorId = bettorId,
+            Type = type,
+            DocumentNumber = $"D3-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}",
+            Title = title,
+            Summary = summary,
+            CreditAmount = creditAmount,
+            RealMoneyAmount = realMoneyAmount,
+            RealCurrencyCode = realCurrencyCode,
+            MoneyToCreditRate = moneyToCreditRate,
+            CreditToMoneyRate = creditToMoneyRate,
+            Reference = reference,
+            RelatedTransactionId = transactionId,
+            RelatedBetId = betId,
+            RelatedWithdrawalRequestId = withdrawalRequestId,
+            IssuedAtUtc = DateTime.UtcNow
+        };
+    }
+
+    private async Task<CreditWithdrawalResponse> MapWithdrawalAsync(Guid withdrawalId, CancellationToken cancellationToken)
+    {
+        var withdrawal = await dbContext.CreditWithdrawalRequests
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == withdrawalId, cancellationToken)
+            ?? throw new InvalidOperationException("Požadavek na výběr nebyl nalezen.");
+        var receipt = withdrawal.Status == CreditWithdrawalRequestStatus.Paid
+            ? await dbContext.ElectronicReceipts
+                .AsNoTracking()
+                .Where(x => x.RelatedWithdrawalRequestId == withdrawal.Id)
+                .OrderByDescending(x => x.IssuedAtUtc)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
+        return MapWithdrawal(withdrawal, receipt);
+    }
+
+    private static CreditWithdrawalResponse MapWithdrawal(CreditWithdrawalRequest withdrawal, ElectronicReceipt? receipt = null)
+    {
+        return new CreditWithdrawalResponse(
+            withdrawal.Id,
+            withdrawal.BettorId,
+            withdrawal.CreditAmount,
+            withdrawal.RealMoneyAmount,
+            withdrawal.RealCurrencyCode,
+            withdrawal.CreditToMoneyRateApplied,
+            withdrawal.Status,
+            withdrawal.Reference,
+            withdrawal.Reason,
+            withdrawal.ProcessedReason,
+            withdrawal.IsAutoProcessed,
+            withdrawal.RequestedAtUtc,
+            withdrawal.ProcessedAtUtc,
+            receipt is null ? null : MapReceipt(receipt));
+    }
+
+    private static ElectronicReceiptResponse MapReceipt(ElectronicReceipt receipt)
+    {
+        return new ElectronicReceiptResponse(
+            receipt.Id,
+            receipt.Type,
+            receipt.DocumentNumber,
+            receipt.Title,
+            receipt.Summary,
+            receipt.CreditAmount,
+            receipt.RealMoneyAmount,
+            receipt.RealCurrencyCode,
+            receipt.MoneyToCreditRate,
+            receipt.CreditToMoneyRate,
+            receipt.Reference,
+            receipt.IssuedAtUtc);
     }
 
     private async Task<BettorWallet> GetOrCreateWalletAsync(Bettor bettor, D3CreditAdminSettingsResponse settings, CancellationToken cancellationToken)

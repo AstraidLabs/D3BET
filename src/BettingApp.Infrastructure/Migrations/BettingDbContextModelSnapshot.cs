@@ -43,6 +43,11 @@ namespace BettingApp.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsPayoutProcessed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("IsWinning")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -60,6 +65,17 @@ namespace BettingApp.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(0);
+
+                    b.Property<decimal>("PayoutCreditAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("PayoutProcessedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("PayoutRealMoneyAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("PlacedAtUtc")
                         .HasColumnType("TEXT");
@@ -170,6 +186,67 @@ namespace BettingApp.Infrastructure.Migrations
                     b.ToTable("BettorWallets");
                 });
 
+            modelBuilder.Entity("BettingApp.Domain.Entities.CreditWithdrawalRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("BettorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("CreditAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("CreditToMoneyRateApplied")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsAutoProcessed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ProcessedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProcessedReason")
+                        .HasMaxLength(240)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RealCurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("RealMoneyAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("RequestedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("BettorId", "RequestedAtUtc");
+
+                    b.ToTable("CreditWithdrawalRequests");
+                });
+
             modelBuilder.Entity("BettingApp.Domain.Entities.D3CreditTransaction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -227,6 +304,81 @@ namespace BettingApp.Infrastructure.Migrations
                     b.ToTable("D3CreditTransactions");
                 });
 
+            modelBuilder.Entity("BettingApp.Domain.Entities.ElectronicReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("BettorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("CreditAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("CreditToMoneyRate")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DocumentNumber")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("IssuedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("MoneyToCreditRate")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RealCurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("RealMoneyAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RelatedBetId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RelatedTransactionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RelatedWithdrawalRequestId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentNumber")
+                        .IsUnique();
+
+                    b.HasIndex("BettorId", "IssuedAtUtc");
+
+                    b.ToTable("ElectronicReceipts");
+                });
+
             modelBuilder.Entity("BettingApp.Domain.Entities.Bet", b =>
                 {
                     b.HasOne("BettingApp.Domain.Entities.BettingMarket", "BettingMarket")
@@ -256,10 +408,32 @@ namespace BettingApp.Infrastructure.Migrations
                     b.Navigation("Bettor");
                 });
 
+            modelBuilder.Entity("BettingApp.Domain.Entities.CreditWithdrawalRequest", b =>
+                {
+                    b.HasOne("BettingApp.Domain.Entities.Bettor", "Bettor")
+                        .WithMany("WithdrawalRequests")
+                        .HasForeignKey("BettorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Bettor");
+                });
+
             modelBuilder.Entity("BettingApp.Domain.Entities.D3CreditTransaction", b =>
                 {
                     b.HasOne("BettingApp.Domain.Entities.Bettor", "Bettor")
                         .WithMany("CreditTransactions")
+                        .HasForeignKey("BettorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Bettor");
+                });
+
+            modelBuilder.Entity("BettingApp.Domain.Entities.ElectronicReceipt", b =>
+                {
+                    b.HasOne("BettingApp.Domain.Entities.Bettor", "Bettor")
+                        .WithMany("ElectronicReceipts")
                         .HasForeignKey("BettorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -278,7 +452,11 @@ namespace BettingApp.Infrastructure.Migrations
 
                     b.Navigation("CreditTransactions");
 
+                    b.Navigation("ElectronicReceipts");
+
                     b.Navigation("Wallet");
+
+                    b.Navigation("WithdrawalRequests");
                 });
 #pragma warning restore 612, 618
         }

@@ -4,4 +4,6 @@ public sealed record PlayerDashboardResponse(
     AccountProfileResponse Profile,
     D3CreditWalletResponse Wallet,
     IReadOnlyList<PlayerMarketSummaryResponse> Markets,
-    IReadOnlyList<PlayerBetSummaryResponse> RecentBets);
+    IReadOnlyList<PlayerBetSummaryResponse> RecentBets,
+    IReadOnlyList<CreditWithdrawalResponse> RecentWithdrawals,
+    IReadOnlyList<ElectronicReceiptResponse> RecentReceipts);

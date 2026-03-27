@@ -17,7 +17,7 @@ public sealed class ServerBootstrapHostedService(
     IOptions<BootstrapIdentityOptions> bootstrapIdentityOptions,
     ILogger<ServerBootstrapHostedService> logger) : IHostedService
 {
-    private const string InitialIdentityMigrationId = "20260326131525_InitialIdentityOpenIddict";
+    private const string InitialIdentityMigrationId = "20260327113839_InitialIdentityOpenIddict";
     private const string EfProductVersion = "10.0.5";
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -91,15 +91,41 @@ public sealed class ServerBootstrapHostedService(
     {
         var applicationManager = services.GetRequiredService<IOpenIddictApplicationManager>();
         var options = operatorOptions.Value;
+
+        await EnsureOperatorClientAsync(
+            applicationManager,
+            options.ClientId,
+            options.DisplayName,
+            options.RedirectUri,
+            cancellationToken);
+
+        if (!string.Equals(options.ClientId, "d3bet-wpf", StringComparison.Ordinal))
+        {
+            await EnsureOperatorClientAsync(
+                applicationManager,
+                "d3bet-wpf",
+                "D3Bet Operator Client",
+                options.RedirectUri,
+                cancellationToken);
+        }
+    }
+
+    private async Task EnsureOperatorClientAsync(
+        IOpenIddictApplicationManager applicationManager,
+        string clientId,
+        string displayName,
+        string redirectUri,
+        CancellationToken cancellationToken)
+    {
         var descriptor = new OpenIddictApplicationDescriptor
         {
-            ClientId = options.ClientId,
+            ClientId = clientId,
             ClientType = OpenIddictConstants.ClientTypes.Public,
             ConsentType = OpenIddictConstants.ConsentTypes.Explicit,
-            DisplayName = options.DisplayName,
+            DisplayName = displayName,
             RedirectUris =
             {
-                new Uri(options.RedirectUri)
+                new Uri(redirectUri)
             },
             Permissions =
             {
@@ -121,7 +147,7 @@ public sealed class ServerBootstrapHostedService(
             }
         };
 
-        var existingApplication = await applicationManager.FindByClientIdAsync(options.ClientId, cancellationToken);
+        var existingApplication = await applicationManager.FindByClientIdAsync(clientId, cancellationToken);
         if (existingApplication is not null)
         {
             await applicationManager.UpdateAsync(existingApplication, descriptor, cancellationToken);
@@ -129,7 +155,7 @@ public sealed class ServerBootstrapHostedService(
         }
 
         await applicationManager.CreateAsync(descriptor, cancellationToken);
-        logger.LogInformation("OAuth klient pro provozovatele '{ClientId}' byl vytvoren.", options.ClientId);
+        logger.LogInformation("OAuth klient pro provozovatele '{ClientId}' byl vytvoren.", clientId);
     }
 
     private async Task SeedBootstrapUsersAsync(IServiceProvider services, CancellationToken cancellationToken)

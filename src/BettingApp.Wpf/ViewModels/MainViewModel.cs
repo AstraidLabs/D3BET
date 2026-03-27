@@ -14,6 +14,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
     private readonly BetEditorWindowService betEditorWindowService;
     private readonly CustomerDisplayWindowService customerDisplayWindowService;
     private readonly MarketEditorWindowService marketEditorWindowService;
+    private readonly UserAdministrationWindowService userAdministrationWindowService;
     private readonly ConfirmationDialogService confirmationDialogService;
     private readonly ProfileWindowService profileWindowService;
     private readonly OperatorSessionContext operatorSessionContext;
@@ -49,6 +50,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         BetEditorWindowService betEditorWindowService,
         CustomerDisplayWindowService customerDisplayWindowService,
         MarketEditorWindowService marketEditorWindowService,
+        UserAdministrationWindowService userAdministrationWindowService,
         ConfirmationDialogService confirmationDialogService,
         ProfileWindowService profileWindowService,
         OperatorSessionContext operatorSessionContext,
@@ -60,6 +62,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         this.betEditorWindowService = betEditorWindowService;
         this.customerDisplayWindowService = customerDisplayWindowService;
         this.marketEditorWindowService = marketEditorWindowService;
+        this.userAdministrationWindowService = userAdministrationWindowService;
         this.confirmationDialogService = confirmationDialogService;
         this.profileWindowService = profileWindowService;
         this.operatorSessionContext = operatorSessionContext;
@@ -68,6 +71,12 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         Editor = new BetEditorViewModel(SaveAsync, CancelEditAsync, TopUpEditorWalletAsync);
         MarketEditor = new MarketEditorViewModel(SaveMarketAsync, CancelMarketEditAsync);
         Configuration = new AppConfigurationViewModel(SaveConfigurationAsync, ResetConfigurationToDefaults);
+        UserAdministrationViewModel? userAdministrationViewModel = null;
+        userAdministrationViewModel = new UserAdministrationViewModel(
+            operationsApiClient,
+            confirmationDialogService,
+            () => this.userAdministrationWindowService.ShowAsync(userAdministrationViewModel!));
+        UserAdministration = userAdministrationViewModel;
         D3CreditAdmin = new D3CreditAdminViewModel(
             RefreshD3CreditAdminAsync,
             SaveD3CreditAdminSettingsAsync,
@@ -75,6 +84,12 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
             RefundD3CreditBetAsync,
             AddD3CreditMarketRule,
             RemoveSelectedD3CreditMarketRule);
+        LicenseAdministration = new LicenseAdministrationViewModel(
+            RefreshLicenseAdministrationAsync,
+            RevokeSelectedLicenseAsync,
+            RestoreSelectedLicenseAsync,
+            ReleaseSelectedLicenseAsync,
+            ExtendSelectedLicenseAsync);
         Editor.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName is nameof(BetEditorViewModel.SelectedBettor)
@@ -131,7 +146,11 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
 
     public AppConfigurationViewModel Configuration { get; }
 
+    public UserAdministrationViewModel UserAdministration { get; }
+
     public D3CreditAdminViewModel D3CreditAdmin { get; }
+
+    public LicenseAdministrationViewModel LicenseAdministration { get; }
 
     public ObservableCollection<MarketItemViewModel> Markets { get; } = new();
 
@@ -322,7 +341,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
             var totalItems = BuildFilteredAndSortedRecentBets().Count;
             if (totalItems == 0)
             {
-                return "Pro zadané podmínky teď nemáme žádné odpovídající sázky.";
+                return RecentBets.Count == 0
+                    ? "Zatím nemáte přijaté žádné sázky."
+                    : "Pro zadané podmínky teď nemáme žádné odpovídající sázky.";
             }
 
             var start = ((CurrentPage - 1) * SelectedPageSize) + 1;
@@ -377,6 +398,11 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
 
             await realtimeClient.StartAsync();
             await LoadAsync();
+            if (IsAdmin)
+            {
+                await UserAdministration.InitializeAsync();
+                await RefreshLicenseAdministrationAsync();
+            }
             await RestartAutoRefreshLoopAsync();
         }
         catch (Exception ex)
@@ -971,20 +997,22 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         {
             Title = "Aktivní sázky",
             Value = totalBets.ToString(culture),
-            Subtitle = $"{uniqueBettors} aktivních sázejících právě v přehledu",
+            Subtitle = totalBets == 0
+                ? "Zatím nejsou přijaty žádné sázky"
+                : $"{uniqueBettors} aktivních sázejících právě v přehledu",
             AccentBrush = "#F97316"
         });
         DashboardKpis.Add(new DashboardKpiViewModel
         {
             Title = "Objem přijatých vkladů",
-            Value = totalStake.ToString("C", culture),
+            Value = totalBets == 0 ? "—" : totalStake.ToString("C", culture),
             Subtitle = pendingBets == 0 ? "Všechny tikety jsou vyřízené" : $"{pendingBets} tiketů čeká na vyhodnocení",
             AccentBrush = "#38BDF8"
         });
         DashboardKpis.Add(new DashboardKpiViewModel
         {
             Title = "Potenciál vaší provize",
-            Value = operatorCommission.ToString("C", culture),
+            Value = totalBets == 0 ? "—" : operatorCommission.ToString("C", culture),
             Subtitle = Configuration.EnableOperatorCommission
                 ? $"{commissionFormulaLabel} při sazbě {commissionRate:0.##} % a poplatku {flatFeePerBet.ToString("C", culture)} za sázku"
                 : "Provizní model je aktuálně vypnutý",
@@ -993,14 +1021,16 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         DashboardKpis.Add(new DashboardKpiViewModel
         {
             Title = "Možný objem výplat",
-            Value = potentialPayout.ToString("C", culture),
-            Subtitle = $"Průměrný kurz napříč portfoliem je {averageOdds:0.00}",
+            Value = totalBets == 0 ? "—" : potentialPayout.ToString("C", culture),
+            Subtitle = totalBets == 0
+                ? "Až přijmete první sázky, uvidíte souhrn možných výplat"
+                : $"Průměrný kurz napříč portfoliem je {averageOdds:0.00}",
             AccentBrush = "#22C55E"
         });
         DashboardKpis.Add(new DashboardKpiViewModel
         {
             Title = "Úspěšnost ticketů",
-            Value = $"{winningRate:P0}",
+            Value = totalBets == 0 ? "—" : $"{winningRate:P0}",
             Subtitle = winningBets == 0
                 ? (lostBets == 0 ? "Zatím bez vyhodnocených tiketů" : $"{lostBets} tiketů už skončilo bez výhry")
                 : $"{winningBets} tiketů už skončilo výhrou",
@@ -1456,6 +1486,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         D3CreditAdmin.EnableTestTopUpGateway = settings.EnableTestTopUpGateway;
         D3CreditAdmin.EnableManualCreditAdjustments = settings.EnableManualCreditAdjustments;
         D3CreditAdmin.EnableManualBetRefunds = settings.EnableManualBetRefunds;
+        D3CreditAdmin.EnablePlayerWithdrawals = settings.EnablePlayerWithdrawals;
+        D3CreditAdmin.AutoApproveWithdrawals = settings.AutoApproveWithdrawals;
+        D3CreditAdmin.AutoPayoutWinningBets = settings.AutoPayoutWinningBets;
         D3CreditAdmin.ManualCurrencyCode = settings.BaseCurrencyCode;
 
         D3CreditAdmin.Wallets.Clear();
@@ -1538,6 +1571,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
                 EnableTestTopUpGateway = D3CreditAdmin.EnableTestTopUpGateway,
                 EnableManualCreditAdjustments = D3CreditAdmin.EnableManualCreditAdjustments,
                 EnableManualBetRefunds = D3CreditAdmin.EnableManualBetRefunds,
+                EnablePlayerWithdrawals = D3CreditAdmin.EnablePlayerWithdrawals,
+                AutoApproveWithdrawals = D3CreditAdmin.AutoApproveWithdrawals,
+                AutoPayoutWinningBets = D3CreditAdmin.AutoPayoutWinningBets,
                 DefaultTopUpAmount = ParsePositiveDecimal(D3CreditAdmin.DefaultTopUpAmount, "Výchozí dobití musí být větší než 0.")
             };
 
@@ -1678,6 +1714,154 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         D3CreditAdmin.SelectedMarketRule = null;
         StatusMessage = $"Tržní D3Kredit pravidlo pro {removedName} bylo odebráno z návrhu nastavení.";
     }
+
+    private async Task RefreshLicenseAdministrationAsync()
+    {
+        if (!IsAdmin)
+        {
+            return;
+        }
+
+        var overview = await operationsApiClient.GetLicenseOverviewAsync();
+        LicenseAdministration.ServerInstanceId = overview.ServerInstanceId;
+        LicenseAdministration.OverviewSummary =
+            $"Aktivních: {overview.ActiveLicenses} | Blokovaných: {overview.RevokedLicenses} | Brzy končí: {overview.ExpiringSoonLicenses}";
+
+        var selectedLicenseId = LicenseAdministration.SelectedLicense?.LicenseId;
+        LicenseAdministration.Licenses.Clear();
+        foreach (var license in overview.Licenses.OrderBy(item => item.CustomerName, StringComparer.CurrentCultureIgnoreCase))
+        {
+            var item = new LicenseAdminItemViewModel
+            {
+                LicenseId = license.LicenseId,
+                CustomerName = license.CustomerName,
+                Email = license.Email,
+                InstallationId = license.InstallationId,
+                IsRevoked = license.IsRevoked,
+                IsExpiringSoon = license.IsExpiringSoon,
+                StatusLabel = license.StatusLabel,
+                StatusBadgeText = license.IsRevoked ? "Blokovaná" : license.IsExpiringSoon ? "Brzy končí" : "Aktivní",
+                IssuedAtDisplay = license.IssuedAtUtc.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
+                ExpiresAtDisplay = license.ExpiresAtUtc.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
+                LastValidatedAtDisplay = license.LastValidatedAtUtc?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "Zatím bez ověření"
+            };
+
+            LicenseAdministration.Licenses.Add(item);
+            if (item.LicenseId == selectedLicenseId)
+            {
+                LicenseAdministration.SelectedLicense = item;
+            }
+        }
+
+        if (LicenseAdministration.SelectedLicense is null && LicenseAdministration.Licenses.Count > 0)
+        {
+            LicenseAdministration.SelectedLicense = LicenseAdministration.Licenses[0];
+        }
+
+        LicenseAdministration.AuditEntries.Clear();
+        foreach (var audit in overview.AuditEntries)
+        {
+            LicenseAdministration.AuditEntries.Add(new LicenseAuditEntryViewModel
+            {
+                TimestampDisplay = audit.CreatedAtUtc.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
+                EventTypeDisplay = ResolveLicenseAuditEventLabel(audit.EventType),
+                Email = audit.Email,
+                InstallationIdDisplay = string.IsNullOrWhiteSpace(audit.InstallationId) ? "Bez vazby" : audit.InstallationId,
+                Message = audit.DisplayMessage
+            });
+        }
+    }
+
+    private async Task RevokeSelectedLicenseAsync()
+    {
+        await ExecuteLicenseAdminActionAsync(
+            "Blokujeme vybranou licenci klienta.",
+            async () =>
+            {
+                var selected = LicenseAdministration.SelectedLicense ?? throw new InvalidOperationException("Nejdřív vyberte licenci.");
+                await operationsApiClient.RevokeLicenseAsync(selected.LicenseId, LicenseAdministration.AdminReason);
+            },
+            "Licence byla zablokovaná.");
+    }
+
+    private async Task RestoreSelectedLicenseAsync()
+    {
+        await ExecuteLicenseAdminActionAsync(
+            "Obnovujeme přístup vybrané licence klienta.",
+            async () =>
+            {
+                var selected = LicenseAdministration.SelectedLicense ?? throw new InvalidOperationException("Nejdřív vyberte licenci.");
+                await operationsApiClient.RestoreLicenseAsync(selected.LicenseId, LicenseAdministration.AdminReason);
+            },
+            "Licence byla znovu povolená.");
+    }
+
+    private async Task ReleaseSelectedLicenseAsync()
+    {
+        await ExecuteLicenseAdminActionAsync(
+            "Uvolňujeme licenci pro nové zařízení klienta.",
+            async () =>
+            {
+                var selected = LicenseAdministration.SelectedLicense ?? throw new InvalidOperationException("Nejdřív vyberte licenci.");
+                await operationsApiClient.ReleaseLicenseAsync(selected.LicenseId, LicenseAdministration.AdminReason);
+            },
+            "Licence byla uvolněná pro nové zařízení.");
+    }
+
+    private async Task ExtendSelectedLicenseAsync()
+    {
+        await ExecuteLicenseAdminActionAsync(
+            "Prodlužujeme platnost vybrané licence klienta.",
+            async () =>
+            {
+                var selected = LicenseAdministration.SelectedLicense ?? throw new InvalidOperationException("Nejdřív vyberte licenci.");
+                var additionalDays = ParseNonNegativeInt(LicenseAdministration.ExtendDays, "Počet dní pro prodloužení musí být celé číslo 0 nebo vyšší.");
+                if (additionalDays <= 0)
+                {
+                    throw new InvalidOperationException("Prodloužení musí být alespoň o 1 den.");
+                }
+
+                await operationsApiClient.ExtendLicenseAsync(selected.LicenseId, additionalDays, LicenseAdministration.AdminReason);
+            },
+            "Platnost licence byla prodloužená.");
+    }
+
+    private async Task ExecuteLicenseAdminActionAsync(string busyText, Func<Task> actionAsync, string successMessage)
+    {
+        if (!IsAdmin)
+        {
+            StatusMessage = "S licencemi klienta může pracovat jen administrátor.";
+            return;
+        }
+
+        try
+        {
+            SetBusyState(busyText);
+            await actionAsync();
+            await RefreshLicenseAdministrationAsync();
+            StatusMessage = successMessage;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = GetFriendlyErrorMessage(ex, "Licenční změnu se nepodařilo dokončit.");
+        }
+        finally
+        {
+            ClearBusyState();
+        }
+    }
+
+    private static string ResolveLicenseAuditEventLabel(string eventType) => eventType switch
+    {
+        "activated" => "Aktivace",
+        "rebound" => "Znovu navázání",
+        "validated" => "Ověření",
+        "revoked" => "Blokace",
+        "restored" => "Obnovení",
+        "released" => "Uvolnění zařízení",
+        "extended" => "Prodloužení",
+        _ => "Událost"
+    };
 
     private string ResolveMarketName(Guid marketId)
     {

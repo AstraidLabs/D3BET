@@ -24,6 +24,9 @@ public partial class App : System.Windows.Application
 
         Directory.CreateDirectory(appDataDirectory);
         var operatorSessionPath = Path.Combine(appDataDirectory, "operator-session.json");
+        var operatorAuthOptions = new OperatorAuthOptions();
+        var licenseService = new LicenseService(operatorAuthOptions);
+        licenseService.ConfigurePaths(appDataDirectory);
 
         host = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
@@ -32,7 +35,8 @@ public partial class App : System.Windows.Application
                 services.AddSingleton(new OperatorSessionContext());
                 services.AddSingleton(new ServerConnectionContext());
                 services.AddSingleton(new ShellModeContext());
-                services.AddSingleton(new OperatorAuthOptions());
+                services.AddSingleton(operatorAuthOptions);
+                services.AddSingleton(licenseService);
                 services.AddSingleton<SelfServiceApiClient>();
                 services.AddSingleton<ServerDiscoveryService>();
                 services.AddSingleton<OperatorAuthService>();
@@ -45,12 +49,14 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<BetEditorWindowService>();
                 services.AddSingleton<CustomerDisplayWindowService>();
                 services.AddSingleton<MarketEditorWindowService>();
+                services.AddSingleton<UserAdministrationWindowService>();
                 services.AddSingleton<ConfirmationDialogService>();
                 services.AddSingleton<MainViewModel>();
                 services.AddSingleton<PlayerMainViewModel>();
                 services.AddSingleton<StartupWindow>();
                 services.AddSingleton<MainWindow>();
                 services.AddSingleton<PlayerWindow>();
+                services.AddSingleton<LicenseActivationWindow>();
             })
             .Build();
 
@@ -84,7 +90,7 @@ public partial class App : System.Windows.Application
             }
 
             MessageBox.Show(
-                $"Aplikaci se nepodarilo spustit.{Environment.NewLine}{Environment.NewLine}{ex.Message}",
+                $"Aplikaci se nepodarilo spustit.{Environment.NewLine}{Environment.NewLine}{PreLoginErrorTranslator.Translate(ex, "Před přihlášením se nepodařilo dokončit přípravu klienta.")}",
                 "Startup chyba",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);

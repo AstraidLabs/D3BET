@@ -27,4 +27,10 @@ public sealed class D3CreditOptions
     public decimal OddsVolatilityWeightPercent { get; set; } = 5m;
 
     public bool EnableTestTopUpGateway { get; set; } = true;
+
+    public bool EnablePlayerWithdrawals { get; set; } = true;
+
+    public bool AutoApproveWithdrawals { get; set; } = false;
+
+    public bool AutoPayoutWinningBets { get; set; } = true;
 }

@@ -1,0 +1,688 @@
+<UserControl x:Class="BettingApp.Wpf.Views.AdminConfigurationPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="720"
+             d:DesignWidth="1080">
+    <UserControl.Resources>
+        <Style x:Key="GridHeaderStyleLocal" TargetType="GridViewColumnHeader">
+            <Setter Property="Background" Value="#122033" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="#2234475E" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+
+        <Style x:Key="GridListViewItemStyleLocal" TargetType="ListViewItem">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Background" Value="#00000000" />
+            <Setter Property="BorderBrush" Value="#18283B52" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1622354A" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#22314A67" />
+                    <Setter Property="BorderBrush" Value="#55F97316" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="GridListViewStyleLocal" TargetType="ListView">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource GridListViewItemStyleLocal}" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Nastavení D3Bet" />
+            <TextBlock Margin="0,4,0,0"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       Text="Na jednom místě si nastavíte, jak má D3Bet fungovat pro obsluhu, hráče i práci s D3Kreditem."
+                       TextWrapping="Wrap" />
+        </StackPanel>
+
+        <TabControl Grid.Row="1"
+                    Style="{DynamicResource SubTabControlStyleLocal}">
+            <TabItem Header="Provoz aplikace"
+                     Style="{DynamicResource SubTabItemStyleLocal}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel MaxWidth="860">
+                        <UniformGrid Columns="2" Margin="0,0,0,18">
+                            <Border Margin="0,0,12,12"
+                                    Padding="18"
+                                    Background="#0F172ACC"
+                                    BorderBrush="#2234475E"
+                                    BorderThickness="1"
+                                    CornerRadius="18">
+                                <StackPanel>
+                                    <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Chování obrazovek" />
+                                    <TextBlock Margin="0,4,0,14"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="Nastavte, jak často se má aplikace obnovovat a jak živě má reagovat při každodenní práci." />
+                                    <CheckBox Style="{DynamicResource CheckBoxStyleLocal}"
+                                              IsChecked="{Binding Configuration.EnableAutoRefresh}"
+                                              Content="Automaticky obnovovat přehled" />
+                                    <CheckBox Style="{DynamicResource CheckBoxStyleLocal}"
+                                              IsChecked="{Binding Configuration.EnableRealtimeRefresh}"
+                                              Content="Aktualizovat při živých událostech" />
+                                    <CheckBox Margin="0,0,0,12"
+                                              Style="{DynamicResource CheckBoxStyleLocal}"
+                                              IsChecked="{Binding Configuration.EnableTicketAnimations}"
+                                              Content="Zvýraznit tikety animacemi" />
+                                    <TextBlock Style="{DynamicResource LabelStyle}" Text="Jak často obnovovat přehled" />
+                                    <ComboBox Width="220"
+                                              Style="{DynamicResource ComboBoxStyleLocal}"
+                                              Tag="Zvolte interval"
+                                              ItemsSource="{Binding Configuration.AutoRefreshIntervals}"
+                                              SelectedItem="{Binding Configuration.SelectedAutoRefreshInterval}"
+                                              DisplayMemberPath="Label" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Margin="0,0,0,12"
+                                    Padding="18"
+                                    Background="#0F172ACC"
+                                    BorderBrush="#2234475E"
+                                    BorderThickness="1"
+                                    CornerRadius="18">
+                                <StackPanel>
+                                    <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Doporučené nastavení" />
+                                    <TextBlock Margin="0,4,0,14"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="Tahle volba vám pomůže sladit rychlost systému s tempem provozu na pobočce." />
+                                    <TextBlock Foreground="{DynamicResource PrimaryTextBrush}" Text="• Častější obnovu zvolte pro rušnější provoz" />
+                                    <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource PrimaryTextBrush}" Text="• Živé aktualizace pomohou při práci s měnícími se událostmi" />
+                                    <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource PrimaryTextBrush}" Text="• Zvýraznění tiketů zlepšuje orientaci obsluhy" />
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Button Width="220"
+                                    Style="{DynamicResource PrimaryButtonStyleLocal}"
+                                    Command="{Binding Configuration.SaveCommand}"
+                                    Content="Uložit nastavení aplikace" />
+                            <Button Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                    Margin="0"
+                                    Command="{Binding Configuration.ResetCommand}"
+                                    Content="Vrátit doporučené hodnoty" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Provize a výnosy"
+                     Style="{DynamicResource SubTabItemStyleLocal}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel MaxWidth="760">
+                        <Border Padding="20"
+                                Background="#0F172ACC"
+                                BorderBrush="#2234475E"
+                                BorderThickness="1"
+                                CornerRadius="18">
+                            <StackPanel>
+                                <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Jak D3Bet vydělává" />
+                                <TextBlock Margin="0,4,0,14"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           Text="Nastavte, jak se má počítat vaše odměna z přijatých sázek a jaký prostor chcete ponechat pro marži." />
+                                <CheckBox Style="{DynamicResource CheckBoxStyleLocal}"
+                                          IsChecked="{Binding Configuration.EnableOperatorCommission}"
+                                          Content="Započítávat provozní provizi" />
+                                <TextBlock Style="{DynamicResource LabelStyle}" Text="Způsob výpočtu provize" />
+                                <ComboBox Width="280"
+                                          Style="{DynamicResource ComboBoxStyleLocal}"
+                                          Tag="Zvolte provizní model"
+                                          ItemsSource="{Binding Configuration.CommissionFormulas}"
+                                          SelectedItem="{Binding Configuration.SelectedCommissionFormula}"
+                                          DisplayMemberPath="Label" />
+                                <TextBlock Margin="0,14,0,6" Style="{DynamicResource LabelStyle}" Text="Provize v procentech" />
+                                <TextBox Width="180"
+                                         Style="{DynamicResource TextBoxStyleLocal}"
+                                         Text="{Binding Configuration.OperatorCommissionRatePercent, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Margin="0,14,0,6" Style="{DynamicResource LabelStyle}" Text="Pevná částka za každou sázku" />
+                                <TextBox Width="180"
+                                         Style="{DynamicResource TextBoxStyleLocal}"
+                                         Text="{Binding Configuration.OperatorFlatFeePerBet, UpdateSourceTrigger=PropertyChanged}" />
+                                <StackPanel Margin="0,16,0,0" Orientation="Horizontal">
+                                    <Button Style="{DynamicResource PrimaryButtonStyleLocal}"
+                                            Command="{Binding Configuration.SaveCommand}"
+                                            Content="Uložit pravidla výnosů" />
+                                    <Button Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                            Margin="0"
+                                            Command="{Binding Configuration.ResetCommand}"
+                                            Content="Vrátit doporučený model" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Hodnota D3Kreditu"
+                     Style="{DynamicResource SubTabItemStyleLocal}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel MaxWidth="900">
+                        <WrapPanel Margin="0,0,0,12">
+                            <Border Width="280"
+                                    Margin="0,0,12,12"
+                                    Padding="18"
+                                    Background="#0F172ACC"
+                                    BorderBrush="#2234475E"
+                                    BorderThickness="1"
+                                    CornerRadius="18">
+                                <StackPanel>
+                                    <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Základní nastavení kreditu" />
+                                    <TextBlock Margin="0,4,0,14" Foreground="{DynamicResource SecondaryTextBrush}" Text="Určete, jakou hodnotu má D3Kredit vůči běžné měně a jak se má v systému zobrazovat." />
+                                    <TextBlock Style="{DynamicResource LabelStyle}" Text="Název kreditu" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.CreditCode, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,12,0,6" Style="{DynamicResource LabelStyle}" Text="Hlavní měna" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.BaseCurrencyCode, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,12,0,6" Style="{DynamicResource LabelStyle}" Text="Kolik kreditu odpovídá 1 jednotce měny" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.BaseCreditsPerCurrencyUnit, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,12,0,6" Style="{DynamicResource LabelStyle}" Text="Kolik měny odpovídá 1 kreditu" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.BaseCurrencyUnitsPerCredit, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Width="280"
+                                    Margin="0,0,12,12"
+                                    Padding="18"
+                                    Background="#0F172ACC"
+                                    BorderBrush="#2234475E"
+                                    BorderThickness="1"
+                                    CornerRadius="18">
+                                <StackPanel>
+                                    <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Reakce na zájem hráčů" />
+                                    <TextBlock Margin="0,4,0,14" Foreground="{DynamicResource SecondaryTextBrush}" Text="Nastavte, jak se má nabídka upravovat při nižším nebo vyšším zájmu o sázky." />
+                                    <TextBlock Style="{DynamicResource LabelStyle}" Text="Nižší zájem do" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.LowParticipationThreshold, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,12,0,6" Style="{DynamicResource LabelStyle}" Text="Navýšení atraktivity (%)" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.LowParticipationBoostPercent, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,12,0,6" Style="{DynamicResource LabelStyle}" Text="Vyšší zájem od" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.HighParticipationThreshold, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,12,0,6" Style="{DynamicResource LabelStyle}" Text="Snížení atraktivity (%)" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.HighParticipationReductionPercent, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Width="280"
+                                    Margin="0,0,0,12"
+                                    Padding="18"
+                                    Background="#0F172ACC"
+                                    BorderBrush="#2234475E"
+                                    BorderThickness="1"
+                                    CornerRadius="18">
+                                <StackPanel>
+                                    <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Citlivost výpočtu" />
+                                    <TextBlock Margin="0,4,0,14" Foreground="{DynamicResource SecondaryTextBrush}" Text="Tady určíte, jak citlivě má systém reagovat na objem sázek a změny v nabídce." />
+                                    <TextBlock Style="{DynamicResource LabelStyle}" Text="Citlivost na objem sázek" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.TotalStakePressureDivisor, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,12,0,6" Style="{DynamicResource LabelStyle}" Text="Nejvyšší možné snížení (%)" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.MaxPressureReductionPercent, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,12,0,6" Style="{DynamicResource LabelStyle}" Text="Citlivost na změny (%)" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.OddsVolatilityWeightPercent, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,12,0,6" Style="{DynamicResource LabelStyle}" Text="Doporučené dobití" />
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.DefaultTopUpAmount, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Border>
+                        </WrapPanel>
+
+                        <Button Width="200"
+                                Style="{DynamicResource PrimaryButtonStyleLocal}"
+                                Command="{Binding D3CreditAdmin.SaveSettingsCommand}"
+                                Content="Uložit hodnotu kreditu" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Pravidla událostí"
+                     Style="{DynamicResource SubTabItemStyleLocal}">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Left">
+                            <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Nastavení pro konkrétní události" />
+                            <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource SecondaryTextBrush}" Text="Každé události můžete dát vlastní pravidla, pokud se má chovat jinak než běžná nabídka." />
+                        </StackPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Width="120"
+                                    Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                    Command="{Binding D3CreditAdmin.AddMarketRuleCommand}"
+                                    Content="Přidat pravidlo" />
+                            <Button Width="120"
+                                    Margin="0"
+                                    Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                    Command="{Binding D3CreditAdmin.RemoveSelectedMarketRuleCommand}"
+                                    Content="Odebrat pravidlo" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <ListBox Grid.Row="1"
+                             Margin="0,16,0,0"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ItemsSource="{Binding D3CreditAdmin.MarketRules}"
+                             SelectedItem="{Binding D3CreditAdmin.SelectedMarketRule}">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0,0,0,10" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="14" Background="#0F172ACC" BorderBrush="#2234475E" BorderThickness="1" CornerRadius="16">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Text="{Binding MarketName}" />
+                                        <CheckBox Margin="0,8,0,0" Style="{DynamicResource CheckBoxStyleLocal}" IsChecked="{Binding IsEnabled}" Content="Pravidlo je aktivní" />
+                                        <WrapPanel>
+                                            <StackPanel Width="160" Margin="0,0,12,12">
+                                                <TextBlock Style="{DynamicResource LabelStyle}" Text="Navýšení nabídky (%)" />
+                                                <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding AdditionalMultiplierPercent, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <StackPanel Width="180" Margin="0,0,12,12">
+                                                <TextBlock Style="{DynamicResource LabelStyle}" Text="Vlastní převod měna -> kredit" />
+                                                <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding OverrideMoneyToCreditRate, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                            <StackPanel Width="180" Margin="0,0,12,12">
+                                                <TextBlock Style="{DynamicResource LabelStyle}" Text="Vlastní převod kredit -> měna" />
+                                                <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding OverrideCreditToMoneyRate, UpdateSourceTrigger=PropertyChanged}" />
+                                            </StackPanel>
+                                        </WrapPanel>
+                                        <TextBlock Style="{DynamicResource LabelStyle}" Text="Poznámka pro tým" />
+                                        <TextBox Height="62" Padding="12,8" Style="{DynamicResource TextBoxStyleLocal}" AcceptsReturn="True" TextWrapping="Wrap" Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Dobíjení a platby"
+                     Style="{DynamicResource SubTabItemStyleLocal}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel MaxWidth="860">
+                        <UniformGrid Columns="2" Margin="0,0,0,18">
+                            <Border Margin="0,0,12,12"
+                                    Padding="18"
+                                    Background="#0F172ACC"
+                                    BorderBrush="#2234475E"
+                                    BorderThickness="1"
+                                    CornerRadius="18">
+                                <StackPanel>
+                                    <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Možnosti dobíjení" />
+                                    <TextBlock Margin="0,4,0,14" Foreground="{DynamicResource SecondaryTextBrush}" Text="Rozhodněte, jak snadno se má kredit dostat do systému a jak velkou kontrolu si chce ponechat váš tým." />
+                                    <CheckBox Style="{DynamicResource CheckBoxStyleLocal}" IsChecked="{Binding D3CreditAdmin.EnableTestTopUpGateway}" Content="Povolit testovací dobíjení" />
+                                    <CheckBox Style="{DynamicResource CheckBoxStyleLocal}" IsChecked="{Binding D3CreditAdmin.EnableManualCreditAdjustments}" Content="Povolit ruční úpravy kreditu" />
+                                    <CheckBox Style="{DynamicResource CheckBoxStyleLocal}" IsChecked="{Binding D3CreditAdmin.EnablePlayerWithdrawals}" Content="Povolit hráčům převod kreditu zpět do měny" />
+                                    <CheckBox Style="{DynamicResource CheckBoxStyleLocal}" IsChecked="{Binding D3CreditAdmin.AutoApproveWithdrawals}" Content="Vyřizovat výběry automaticky bez čekání na správce" />
+                                    <CheckBox Style="{DynamicResource CheckBoxStyleLocal}" IsChecked="{Binding D3CreditAdmin.AutoPayoutWinningBets}" Content="Připisovat výhry automaticky po vyhodnocení sázky" />
+                                    <TextBlock Margin="0,14,0,6" Style="{DynamicResource LabelStyle}" Text="Výchozí měna plateb" />
+                                    <TextBox Width="180" Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.ManualCurrencyCode, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Margin="0,0,0,12"
+                                    Padding="18"
+                                    Background="#0F172ACC"
+                                    BorderBrush="#2234475E"
+                                    BorderThickness="1"
+                                    CornerRadius="18">
+                                <StackPanel>
+                                    <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Ruční úprava dobití" />
+                                    <TextBlock Margin="0,4,0,14" Foreground="{DynamicResource SecondaryTextBrush}" Text="Použijte v případech, kdy potřebujete rychle dorovnat kredit, opravit chybnou platbu nebo zapsat mimořádný zásah." />
+                                    <WrapPanel>
+                                        <TextBox Width="140" Margin="0,0,12,12" Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.ManualCreditAmount, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBox Width="140" Margin="0,0,12,12" Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.ManualRealMoneyAmount, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBox Width="120" Margin="0,0,0,12" Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.ManualCurrencyCode, UpdateSourceTrigger=PropertyChanged}" />
+                                    </WrapPanel>
+                                    <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.ManualReason, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Margin="0,12,0,0" Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.ManualReference, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Button Margin="0,14,0,0"
+                                            Width="220"
+                                            Style="{DynamicResource PrimaryButtonStyleLocal}"
+                                            Command="{Binding D3CreditAdmin.ApplyAdjustmentCommand}"
+                                            Content="Provést ruční úpravu" />
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <Button Width="220"
+                                Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                Command="{Binding D3CreditAdmin.SaveSettingsCommand}"
+                                Content="Uložit nastavení dobíjení" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Historie a vrácení"
+                     Style="{DynamicResource SubTabItemStyleLocal}">
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Padding="18"
+                            Background="#0F172ACC"
+                            BorderBrush="#2234475E"
+                            BorderThickness="1"
+                            CornerRadius="18">
+                        <StackPanel>
+                            <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Práce s hráčskými účty" />
+                            <TextBlock Margin="0,4,0,14" Foreground="{DynamicResource SecondaryTextBrush}" Text="Vyhledejte hráče, zkontrolujte jeho zůstatek a podle potřeby vraťte kredit za konkrétní sázku." />
+                            <TextBox Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.WalletSearchText, UpdateSourceTrigger=PropertyChanged}" />
+                            <ListBox Margin="0,14,0,0"
+                                     Height="170"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     ItemsSource="{Binding D3CreditAdmin.Wallets}"
+                                     SelectedItem="{Binding D3CreditAdmin.SelectedWallet}">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Margin" Value="0,0,0,8" />
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="12" Background="#09111C2E" BorderBrush="#2234475E" BorderThickness="1" CornerRadius="16">
+                                            <StackPanel>
+                                                <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Text="{Binding BettorName}" />
+                                                <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource AccentBrush}" Text="{Binding BalanceDisplay}" />
+                                                <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource SecondaryTextBrush}" Text="{Binding RatesDisplay}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <CheckBox Margin="0,14,0,0"
+                                      Style="{DynamicResource CheckBoxStyleLocal}"
+                                      IsChecked="{Binding D3CreditAdmin.EnableManualBetRefunds}"
+                                      Content="Povolit vrácení kreditu za sázku" />
+                            <TextBlock Margin="0,12,0,0"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       Text="Pokud máte automatické výplaty zapnuté, výherní sázky dostanou kredit bez zásahu správce. Když je vypnete, rozhoduje o připsání výhry administrátor ručně v kartě uživatele."
+                                       TextWrapping="Wrap" />
+                            <TextBox Margin="0,12,0,0" Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.RefundBetId, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBox Margin="0,12,0,0" Style="{DynamicResource TextBoxStyleLocal}" Text="{Binding D3CreditAdmin.RefundReason, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Margin="0,14,0,0"
+                                    Width="200"
+                                    Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                    Command="{Binding D3CreditAdmin.RefundBetCommand}"
+                                    Content="Vrátit kredit za sázku" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2"
+                            Padding="18"
+                            Background="#0F172ACC"
+                            BorderBrush="#2234475E"
+                            BorderThickness="1"
+                            CornerRadius="18">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <DockPanel LastChildFill="False">
+                                <TextBlock DockPanel.Dock="Left" Style="{DynamicResource SectionTitleStyle}" Text="Přehled pohybů" />
+                                <Button DockPanel.Dock="Right"
+                                        Width="140"
+                                        Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                        Command="{Binding D3CreditAdmin.RefreshCommand}"
+                                        Content="Načíst znovu" />
+                            </DockPanel>
+                            <ListView Grid.Row="1"
+                                      Margin="0,16,0,0"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      ItemsSource="{Binding D3CreditAdmin.Transactions}"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Margin" Value="0,0,0,8" />
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="12" Background="#09111C2E" BorderBrush="#2234475E" BorderThickness="1" CornerRadius="16">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" Text="{Binding BettorName}" />
+                                                    <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource SecondaryTextBrush}" Text="{Binding Description}" TextWrapping="Wrap" />
+                                                    <TextBlock Margin="0,4,0,0" Foreground="#93C5FD" Text="{Binding Reference, StringFormat=Ref: {0}}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                    <TextBlock HorizontalAlignment="Right" Foreground="{DynamicResource AccentBrush}" Text="{Binding CreditDisplay}" />
+                                                    <TextBlock Margin="0,4,0,0" HorizontalAlignment="Right" Foreground="{DynamicResource SecondaryTextBrush}" Text="{Binding MoneyDisplay}" />
+                                                    <TextBlock Margin="0,4,0,0" HorizontalAlignment="Right" Foreground="{DynamicResource SecondaryTextBrush}" Text="{Binding TypeDisplay}" />
+                                                    <TextBlock Margin="0,4,0,0" HorizontalAlignment="Right" Foreground="#94A3B8" Text="{Binding TimestampDisplay}" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Licence klientů"
+                     Style="{DynamicResource SubTabItemStyleLocal}">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Border Padding="18"
+                            Background="#0F172ACC"
+                            BorderBrush="#2234475E"
+                            BorderThickness="1"
+                            CornerRadius="18">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.2*" />
+                                <ColumnDefinition Width="1.1*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Margin="0,0,18,0">
+                                <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Přístup klientů k serveru" />
+                                <TextBlock Margin="0,4,0,10"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           Text="Tady vidíte, které instalace klienta jsou spárované se serverem, jak dlouho ještě platí a kdy se naposledy ověřily."
+                                           TextWrapping="Wrap" />
+                                <TextBlock Foreground="{DynamicResource AccentBrush}"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding LicenseAdministration.OverviewSummary}" />
+                                <TextBlock Margin="0,8,0,0"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           Text="{Binding LicenseAdministration.ServerInstanceId, StringFormat=Server: {0}}" />
+                                <TextBlock Margin="0,12,0,0"
+                                           Foreground="{DynamicResource SecondaryTextBrush}"
+                                           Text="{Binding LicenseAdministration.SelectedLicenseSummary}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Style="{DynamicResource LabelStyle}" Text="Poznámka k zásahu" />
+                                <TextBox Height="76"
+                                         Padding="12,8"
+                                         Style="{DynamicResource TextBoxStyleLocal}"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         Text="{Binding LicenseAdministration.AdminReason, UpdateSourceTrigger=PropertyChanged}" />
+                                <WrapPanel Margin="0,12,0,0">
+                                    <StackPanel Width="120" Margin="0,0,12,12">
+                                        <TextBlock Style="{DynamicResource LabelStyle}" Text="Prodloužit o dní" />
+                                        <TextBox Style="{DynamicResource TextBoxStyleLocal}"
+                                                 Text="{Binding LicenseAdministration.ExtendDays, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <Button Width="180"
+                                            Style="{DynamicResource PrimaryButtonStyleLocal}"
+                                            Command="{Binding LicenseAdministration.ExtendCommand}"
+                                            Content="Prodloužit licenci" />
+                                </WrapPanel>
+                                <WrapPanel Margin="0,4,0,0">
+                                    <Button Width="180"
+                                            Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                            Command="{Binding LicenseAdministration.ReleaseCommand}"
+                                            Content="Uvolnit zařízení" />
+                                    <Button Width="170"
+                                            Margin="0"
+                                            Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                            Command="{Binding LicenseAdministration.RestoreCommand}"
+                                            Content="Obnovit licenci" />
+                                </WrapPanel>
+                                <WrapPanel Margin="0,4,0,0">
+                                    <Button Width="170"
+                                            Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                            Command="{Binding LicenseAdministration.RevokeCommand}"
+                                            Content="Zablokovat licenci" />
+                                    <Button Width="170"
+                                            Margin="0"
+                                            Style="{DynamicResource SecondaryButtonStyleLocal}"
+                                            Command="{Binding LicenseAdministration.RefreshCommand}"
+                                            Content="Obnovit přehled" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="1" Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.2*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0"
+                                Padding="18"
+                                Background="#0F172ACC"
+                                BorderBrush="#2234475E"
+                                BorderThickness="1"
+                                CornerRadius="18">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <StackPanel>
+                                    <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Seznam licencí" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="Jedním pohledem poznáte aktivní klienty, licence před koncem platnosti i ty, které jsou zablokované."
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+
+                                <ListView Grid.Row="1"
+                                          Margin="0,16,0,0"
+                                          Style="{StaticResource GridListViewStyleLocal}"
+                                          ItemsSource="{Binding LicenseAdministration.Licenses}"
+                                          SelectedItem="{Binding LicenseAdministration.SelectedLicense}">
+                                    <ListView.View>
+                                        <GridView ColumnHeaderContainerStyle="{StaticResource GridHeaderStyleLocal}">
+                                            <GridViewColumn Header="Zákazník" Width="190" DisplayMemberBinding="{Binding CustomerName}" />
+                                            <GridViewColumn Header="E-mail" Width="180" DisplayMemberBinding="{Binding Email}" />
+                                            <GridViewColumn Header="Stav" Width="120" DisplayMemberBinding="{Binding StatusBadgeText}" />
+                                            <GridViewColumn Header="Instalace" Width="170" DisplayMemberBinding="{Binding InstallationIdDisplay}" />
+                                            <GridViewColumn Header="Platí do" Width="140" DisplayMemberBinding="{Binding ExpiresAtDisplay}" />
+                                            <GridViewColumn Header="Poslední ověření" Width="150" DisplayMemberBinding="{Binding LastValidatedAtDisplay}" />
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Column="2"
+                                Padding="18"
+                                Background="#0F172ACC"
+                                BorderBrush="#2234475E"
+                                BorderThickness="1"
+                                CornerRadius="18">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <StackPanel>
+                                    <TextBlock Style="{DynamicResource SectionTitleStyle}" Text="Audit licencí" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="Každá aktivace, ověření, blokace nebo uvolnění se zapisuje, abyste měli přehled o provozních zásazích."
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+
+                                <ListView Grid.Row="1"
+                                          Margin="0,16,0,0"
+                                          Style="{StaticResource GridListViewStyleLocal}"
+                                          ItemsSource="{Binding LicenseAdministration.AuditEntries}">
+                                    <ListView.View>
+                                        <GridView ColumnHeaderContainerStyle="{StaticResource GridHeaderStyleLocal}">
+                                            <GridViewColumn Header="Kdy" Width="130" DisplayMemberBinding="{Binding TimestampDisplay}" />
+                                            <GridViewColumn Header="Událost" Width="120" DisplayMemberBinding="{Binding EventTypeDisplay}" />
+                                            <GridViewColumn Header="E-mail" Width="170" DisplayMemberBinding="{Binding Email}" />
+                                            <GridViewColumn Header="Instalace" Width="150" DisplayMemberBinding="{Binding InstallationIdDisplay}" />
+                                            <GridViewColumn Header="Poznámka" Width="360" DisplayMemberBinding="{Binding Message}" />
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <TextBlock Grid.Row="2"
+                               Margin="4,14,0,0"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Text="Tip: pokud klient mění počítač nebo se poškodí jeho lokální licence, použijte Uvolnit zařízení. Při příští aktivaci si klient licenci naváže znovu na novou instalaci."
+                               TextWrapping="Wrap" />
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>
+

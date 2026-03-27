@@ -50,11 +50,16 @@ public sealed class PlayerPortalService(
                 x.PlacedAtUtc))
             .ToListAsync(cancellationToken);
 
+        var recentWithdrawals = await d3CreditService.GetRecentWithdrawalsAsync(bettor.Id, 20, cancellationToken);
+        var recentReceipts = await d3CreditService.GetRecentReceiptsAsync(bettor.Id, 20, cancellationToken);
+
         return new PlayerDashboardResponse(
             new AccountProfileResponse(user.Id, user.UserName ?? user.Id, user.Email, user.EmailConfirmed, roles.ToArray()),
             wallet,
             markets,
-            recentBets);
+            recentBets,
+            recentWithdrawals,
+            recentReceipts);
     }
 
     public async Task<D3CreditTopUpResponse> TopUpAsync(string userId, PlayerTopUpRequest request, CancellationToken cancellationToken)
@@ -84,6 +89,20 @@ public sealed class PlayerPortalService(
         return await d3CreditService.PlaceCreditBetAsync(
             marketId,
             new D3CreditBetRequest(null, user.UserName, request.CreditStake),
+            cancellationToken);
+    }
+
+    public async Task<CreditWithdrawalResponse> RequestWithdrawalAsync(string userId, PlayerWithdrawalRequest request, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId)
+            ?? throw new InvalidOperationException("Přihlášený hráč nebyl nalezen.");
+        var bettor = await GetOrCreateBettorAsync(user, cancellationToken);
+
+        return await d3CreditService.RequestWithdrawalAsync(
+            bettor.Id,
+            request.Reason,
+            request.CurrencyCode,
+            request.CreditAmount,
             cancellationToken);
     }
 

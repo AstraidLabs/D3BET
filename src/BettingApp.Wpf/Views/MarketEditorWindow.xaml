@@ -37,20 +37,19 @@
             <Setter Property="BorderThickness" Value="1" />
         </Style>
 
-        <Style x:Key="PrimaryButtonStyleLocal" TargetType="Button">
-            <Setter Property="Width" Value="170" />
+        <Style x:Key="PrimaryButtonStyleLocal" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="MinWidth" Value="160" />
             <Setter Property="Height" Value="42" />
             <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="20,10" />
             <Setter Property="Background" Value="{StaticResource AccentBrush}" />
             <Setter Property="Foreground" Value="White" />
-            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
 
         <Style x:Key="SecondaryButtonStyleLocal" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyleLocal}">
-            <Setter Property="Background" Value="#1E293B" />
+            <Setter Property="Background" Value="#315A86" />
             <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
-            <Setter Property="BorderBrush" Value="#334155" />
+            <Setter Property="BorderBrush" Value="#7FB7E7" />
         </Style>
 
         <Style x:Key="CheckBoxStyleLocal" TargetType="CheckBox">

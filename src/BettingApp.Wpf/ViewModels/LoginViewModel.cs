@@ -121,7 +121,7 @@ public sealed class LoginViewModel(
         }
         catch (Exception ex)
         {
-            SetStatus("Přihlášení se nepodařilo", ex.Message);
+            SetStatus("Přihlášení se nepodařilo", PreLoginErrorTranslator.Translate(ex, "Přihlášení se nepodařilo dokončit."));
             return false;
         }
         finally
@@ -208,7 +208,7 @@ public sealed class LoginViewModel(
         }
         catch (Exception ex)
         {
-            SetStatus("Akci se nepodařilo dokončit", ex.Message);
+            SetStatus("Akci se nepodařilo dokončit", PreLoginErrorTranslator.Translate(ex, "Požadovanou akci se nepodařilo dokončit."));
             ClearPreview();
         }
         finally

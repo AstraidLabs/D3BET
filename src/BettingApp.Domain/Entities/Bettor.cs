@@ -11,4 +11,8 @@ public sealed class Bettor
     public BettorWallet? Wallet { get; set; }
 
     public ICollection<D3CreditTransaction> CreditTransactions { get; set; } = new List<D3CreditTransaction>();
+
+    public ICollection<CreditWithdrawalRequest> WithdrawalRequests { get; set; } = new List<CreditWithdrawalRequest>();
+
+    public ICollection<ElectronicReceipt> ElectronicReceipts { get; set; } = new List<ElectronicReceipt>();
 }

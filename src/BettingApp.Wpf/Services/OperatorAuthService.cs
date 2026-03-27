@@ -1,5 +1,7 @@
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
@@ -10,12 +12,14 @@ namespace BettingApp.Wpf.Services;
 
 public sealed class OperatorAuthService(
     OperatorAuthOptions options,
+    LicenseService licenseService,
     SelfServiceApiClient selfServiceApiClient,
     OperatorSessionStore sessionStore,
     OperatorSessionContext sessionContext)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly SemaphoreSlim sessionSemaphore = new(1, 1);
+    private OAuthClientConfiguration? resolvedClientConfiguration;
     private readonly HttpClient httpClient = new()
     {
         Timeout = TimeSpan.FromSeconds(30)
@@ -188,38 +192,86 @@ public sealed class OperatorAuthService(
 
     private async Task<OperatorSessionData> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
     {
+        var clientConfiguration = await GetOAuthClientConfigurationAsync(cancellationToken);
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{options.ServerBaseUrl.TrimEnd('/')}/connect/token")
         {
             Content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["grant_type"] = "refresh_token",
-                ["client_id"] = options.ClientId,
+                ["client_id"] = clientConfiguration.ClientId,
                 ["refresh_token"] = refreshToken
             })
         };
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await PreLoginErrorTranslator.EnsureSuccessOrThrowFriendlyAsync(
+            response,
+            cancellationToken,
+            static (detail, statusCode) =>
+            {
+                if (statusCode == System.Net.HttpStatusCode.BadRequest || statusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    if (detail.Contains("Neplatné přihlašovací údaje", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return "Uživatelské jméno nebo heslo nesouhlasí. Zkuste je prosím zadat znovu.";
+                    }
+
+                    if (detail.Contains("Účet ještě není aktivovaný", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return "Účet ještě není aktivovaný nebo je dočasně mimo provoz. Dokončete aktivaci nebo kontaktujte správce.";
+                    }
+
+                    return "Obnovení přihlášení se nepodařilo. Přihlaste se prosím znovu.";
+                }
+
+                return string.IsNullOrWhiteSpace(detail)
+                    ? "Server teď neumožnil obnovit relaci. Přihlaste se prosím znovu."
+                    : detail;
+            });
         var tokenResponse = await DeserializeAsync<TokenResponse>(response, cancellationToken);
         return await CreateSessionAsync(tokenResponse, cancellationToken);
     }
 
     private async Task<OperatorSessionData> AuthenticateWithPasswordAsync(string userName, string password, CancellationToken cancellationToken)
     {
+        var clientConfiguration = await GetOAuthClientConfigurationAsync(cancellationToken);
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{options.ServerBaseUrl.TrimEnd('/')}/connect/token")
         {
             Content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["grant_type"] = "password",
-                ["client_id"] = options.ClientId,
+                ["client_id"] = clientConfiguration.ClientId,
                 ["username"] = userName,
                 ["password"] = password,
-                ["scope"] = options.Scope
+                ["scope"] = clientConfiguration.Scope
             })
         };
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await PreLoginErrorTranslator.EnsureSuccessOrThrowFriendlyAsync(
+            response,
+            cancellationToken,
+            static (detail, statusCode) =>
+            {
+                if (statusCode == System.Net.HttpStatusCode.BadRequest || statusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    if (detail.Contains("Neplatné přihlašovací údaje", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return "Uživatelské jméno nebo heslo nesouhlasí. Zkuste je prosím zadat znovu.";
+                    }
+
+                    if (detail.Contains("Účet ještě není aktivovaný", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return "Účet ještě není aktivovaný nebo je dočasně mimo provoz. Dokončete aktivaci nebo kontaktujte správce.";
+                    }
+
+                    return "Přihlášení se nepodařilo dokončit. Zkontrolujte zadané údaje a stav účtu.";
+                }
+
+                return string.IsNullOrWhiteSpace(detail)
+                    ? "Přihlášení se nepodařilo dokončit. Zkuste to prosím znovu."
+                    : detail;
+            });
         var tokenResponse = await DeserializeAsync<TokenResponse>(response, cancellationToken);
         return await CreateSessionAsync(tokenResponse, cancellationToken);
     }
@@ -256,7 +308,20 @@ public sealed class OperatorAuthService(
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await PreLoginErrorTranslator.EnsureSuccessOrThrowFriendlyAsync(
+            response,
+            cancellationToken,
+            static (detail, statusCode) =>
+            {
+                if (statusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    return "Relace už není platná. Přihlaste se prosím znovu.";
+                }
+
+                return string.IsNullOrWhiteSpace(detail)
+                    ? "Nepodařilo se načíst profil přihlášeného účtu."
+                    : detail;
+            });
 
         var profile = await DeserializeAsync<OperatorProfileResponse>(response, cancellationToken);
         return new OperatorSessionData
@@ -268,6 +333,81 @@ public sealed class OperatorAuthService(
             UserName = profile.UserName,
             Roles = profile.Roles.ToList()
         };
+    }
+
+    private async Task<OAuthClientConfiguration> GetOAuthClientConfigurationAsync(CancellationToken cancellationToken)
+    {
+        if (resolvedClientConfiguration is not null)
+        {
+            return resolvedClientConfiguration;
+        }
+
+        try
+        {
+            var licenseToken = await licenseService.GetLicenseTokenAsync(cancellationToken);
+            var installationId = await licenseService.GetInstallationIdAsync(cancellationToken);
+            var fingerprint = licenseService.ComputeMachineFingerprint();
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{options.ServerBaseUrl.TrimEnd('/')}/api/auth/client-configuration");
+            request.Headers.Add("X-D3Bet-License", licenseToken);
+            request.Headers.Add("X-D3Bet-InstallationId", installationId);
+            request.Headers.Add("X-D3Bet-Fingerprint", fingerprint);
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            await PreLoginErrorTranslator.EnsureSuccessOrThrowFriendlyAsync(
+                response,
+                cancellationToken,
+                static (detail, statusCode) =>
+                {
+                    if (statusCode == System.Net.HttpStatusCode.BadRequest || statusCode == System.Net.HttpStatusCode.Unauthorized)
+                    {
+                        return "Nepodařilo se načíst zabezpečenou konfiguraci klienta. Zkontrolujte platnost licence a zkuste to znovu.";
+                    }
+
+                    return string.IsNullOrWhiteSpace(detail)
+                        ? "Server teď neposkytl konfiguraci pro přihlášení klienta."
+                        : detail;
+                });
+            var encrypted = await DeserializeAsync<EncryptedClientConfigurationResponse>(response, cancellationToken);
+            var decrypted = DecryptConfiguration(encrypted, licenseToken, installationId);
+            var configuration = new OAuthClientConfiguration
+            {
+                ClientId = decrypted.ClientId,
+                RedirectUri = decrypted.RedirectUri,
+                Scope = decrypted.Scope,
+                DisplayName = decrypted.DisplayName
+            };
+            resolvedClientConfiguration = configuration;
+            return configuration;
+        }
+        catch
+        {
+            resolvedClientConfiguration = new OAuthClientConfiguration
+            {
+                ClientId = options.ClientId,
+                RedirectUri = options.RedirectUri,
+                Scope = options.Scope,
+                DisplayName = "D3Bet Operator Client"
+            };
+            return resolvedClientConfiguration;
+        }
+    }
+
+    private static DecryptedClientConfiguration DecryptConfiguration(
+        EncryptedClientConfigurationResponse encrypted,
+        string licenseToken,
+        string installationId)
+    {
+        var nonce = Convert.FromBase64String(encrypted.Nonce);
+        var cipher = Convert.FromBase64String(encrypted.CipherText);
+        var tag = Convert.FromBase64String(encrypted.Tag);
+        var material = $"D3BET-LICENSING-LOCAL-SECRET-V1|{licenseToken}|{installationId}|{Convert.ToBase64String(nonce)}";
+        var key = SHA256.HashData(Encoding.UTF8.GetBytes(material));
+        var plain = new byte[cipher.Length];
+
+        using var aes = new AesGcm(key, 16);
+        aes.Decrypt(nonce, cipher, tag, plain);
+        return JsonSerializer.Deserialize<DecryptedClientConfiguration>(plain, JsonOptions)
+            ?? throw new InvalidOperationException("Zašifrovaná konfigurace klienta je poškozená.");
     }
 
     private static async Task<T> DeserializeAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
@@ -296,5 +436,16 @@ public sealed class OperatorAuthService(
         public string UserName { get; set; } = string.Empty;
 
         public List<string> Roles { get; set; } = [];
+    }
+
+    private sealed class OAuthClientConfiguration
+    {
+        public string ClientId { get; set; } = string.Empty;
+
+        public string RedirectUri { get; set; } = string.Empty;
+
+        public string Scope { get; set; } = string.Empty;
+
+        public string DisplayName { get; set; } = string.Empty;
     }
 }

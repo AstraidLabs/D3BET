@@ -47,6 +47,9 @@ public sealed class D3CreditAdminSettingsStore(IOptions<D3CreditOptions> options
             request.EnableTestTopUpGateway,
             request.EnableManualCreditAdjustments,
             request.EnableManualBetRefunds,
+            request.EnablePlayerWithdrawals,
+            request.AutoApproveWithdrawals,
+            request.AutoPayoutWinningBets,
             request.DefaultTopUpAmount,
             request.MarketRules?.ToArray() ?? []));
 
@@ -73,6 +76,9 @@ public sealed class D3CreditAdminSettingsStore(IOptions<D3CreditOptions> options
             defaults.EnableTestTopUpGateway,
             EnableManualCreditAdjustments: true,
             EnableManualBetRefunds: true,
+            EnablePlayerWithdrawals: defaults.EnablePlayerWithdrawals,
+            AutoApproveWithdrawals: defaults.AutoApproveWithdrawals,
+            AutoPayoutWinningBets: defaults.AutoPayoutWinningBets,
             DefaultTopUpAmount: 500m,
             MarketRules: []);
     }
