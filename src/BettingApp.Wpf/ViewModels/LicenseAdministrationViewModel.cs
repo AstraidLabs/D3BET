@@ -103,6 +103,8 @@ public sealed class LicenseAdminItemViewModel
 
     public bool IsRevoked { get; init; }
 
+    public bool IsConfirmed { get; init; }
+
     public bool IsExpiringSoon { get; init; }
 
     public string StatusLabel { get; init; } = string.Empty;

@@ -1725,7 +1725,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
         var overview = await operationsApiClient.GetLicenseOverviewAsync();
         LicenseAdministration.ServerInstanceId = overview.ServerInstanceId;
         LicenseAdministration.OverviewSummary =
-            $"Aktivních: {overview.ActiveLicenses} | Blokovaných: {overview.RevokedLicenses} | Brzy končí: {overview.ExpiringSoonLicenses}";
+            $"Aktivních: {overview.ActiveLicenses} | Čeká na potvrzení: {overview.PendingLicenses} | Blokovaných: {overview.RevokedLicenses} | Brzy končí: {overview.ExpiringSoonLicenses}";
 
         var selectedLicenseId = LicenseAdministration.SelectedLicense?.LicenseId;
         LicenseAdministration.Licenses.Clear();
@@ -1738,9 +1738,10 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
                 Email = license.Email,
                 InstallationId = license.InstallationId,
                 IsRevoked = license.IsRevoked,
+                IsConfirmed = license.IsConfirmed,
                 IsExpiringSoon = license.IsExpiringSoon,
                 StatusLabel = license.StatusLabel,
-                StatusBadgeText = license.IsRevoked ? "Blokovaná" : license.IsExpiringSoon ? "Brzy končí" : "Aktivní",
+                StatusBadgeText = license.IsRevoked ? "Blokovaná" : !license.IsConfirmed ? "Čeká na potvrzení" : license.IsExpiringSoon ? "Brzy končí" : "Aktivní",
                 IssuedAtDisplay = license.IssuedAtUtc.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
                 ExpiresAtDisplay = license.ExpiresAtUtc.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
                 LastValidatedAtDisplay = license.LastValidatedAtUtc?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) ?? "Zatím bez ověření"
@@ -1854,7 +1855,11 @@ public sealed class MainViewModel : ObservableObject, IAsyncViewModel
     private static string ResolveLicenseAuditEventLabel(string eventType) => eventType switch
     {
         "activated" => "Aktivace",
+        "activation_pending" => "Čeká na potvrzení",
         "rebound" => "Znovu navázání",
+        "rebound_pending" => "Nové navázání",
+        "confirmation_requested" => "Příprava potvrzení",
+        "activation_confirmed" => "Potvrzení klientem",
         "validated" => "Ověření",
         "revoked" => "Blokace",
         "restored" => "Obnovení",

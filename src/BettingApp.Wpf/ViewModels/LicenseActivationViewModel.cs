@@ -7,8 +7,8 @@ namespace BettingApp.Wpf.ViewModels;
 public sealed class LicenseActivationViewModel : ObservableObject
 {
     private readonly Func<string, string, CancellationToken, Task<ClientLicenseState>> activateAsync;
-    private string email = "license@d3bet.local";
-    private string activationKeyBase64 = "RDNCRVQtREVWLUxJQ0VOU0UtS0VZLTIwMjY=";
+    private string email = "client@d3bet.local";
+    private string activationKeyBase64 = "RDNCRVQtU0lOR0xFLUxJQ0VOU0UtMjAyNg==";
     private string statusMessage = "Zadejte licenční e-mail a klíč pro propojení klienta se serverem D3Bet.";
     private bool isBusy;
 

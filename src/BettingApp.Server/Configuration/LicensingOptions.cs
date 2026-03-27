@@ -8,6 +8,12 @@ public sealed class LicensingOptions
 
     public int LicenseValidityDays { get; set; } = 365;
 
+    public int BootstrapSessionValidityMinutes { get; set; } = 20;
+
+    public int BootstrapConfigurationValidityMinutes { get; set; } = 10;
+
+    public int BootstrapConfigurationVersion { get; set; } = 1;
+
     public List<BootstrapLicenseOption> BootstrapLicenses { get; set; } = [];
 }
 

@@ -1114,6 +1114,8 @@ public sealed class OperationsApiClient(
 
         public int ActiveLicenses { get; set; }
 
+        public int PendingLicenses { get; set; }
+
         public int RevokedLicenses { get; set; }
 
         public int ExpiringSoonLicenses { get; set; }
@@ -1134,6 +1136,8 @@ public sealed class OperationsApiClient(
         public string InstallationId { get; set; } = string.Empty;
 
         public bool IsRevoked { get; set; }
+
+        public bool IsConfirmed { get; set; }
 
         public bool IsExpiringSoon { get; set; }
 

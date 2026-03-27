@@ -365,6 +365,14 @@ app.MapPost("/connect/token", async (HttpContext context) =>
 
     if (request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType())
     {
+        var bootstrapSessionToken = ResolveOpenIddictParameter(request, "d3bet_bootstrap_session_token");
+        var bootstrapConfigurationId = ResolveOpenIddictParameter(request, "d3bet_bootstrap_config_id");
+        var licenseService = context.RequestServices.GetRequiredService<LicenseService>();
+        await licenseService.ValidateBootstrapAuthorizationAsync(
+            bootstrapSessionToken,
+            bootstrapConfigurationId,
+            context.RequestAborted);
+
         var result = await context.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         if (!result.Succeeded || result.Principal is null)
         {
@@ -391,6 +399,14 @@ app.MapPost("/connect/token", async (HttpContext context) =>
 
     if (request.IsPasswordGrantType())
     {
+        var bootstrapSessionToken = ResolveOpenIddictParameter(request, "d3bet_bootstrap_session_token");
+        var bootstrapConfigurationId = ResolveOpenIddictParameter(request, "d3bet_bootstrap_config_id");
+        var licenseService = context.RequestServices.GetRequiredService<LicenseService>();
+        await licenseService.ValidateBootstrapAuthorizationAsync(
+            bootstrapSessionToken,
+            bootstrapConfigurationId,
+            context.RequestAborted);
+
         var userManager = context.RequestServices.GetRequiredService<UserManager<IdentityUser>>();
         var principalFactory = context.RequestServices.GetRequiredService<OperatorPrincipalFactory>();
         var signInManager = context.RequestServices.GetRequiredService<SignInManager<IdentityUser>>();
@@ -687,6 +703,14 @@ app.MapPost("/api/license/validate", async (
     CancellationToken cancellationToken) =>
 {
     return Results.Ok(await licenseService.ValidateAsync(request, cancellationToken));
+});
+
+app.MapPost("/api/license/confirm", async (
+    LicenseService licenseService,
+    LicenseConfirmationRequest request,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await licenseService.ConfirmAsync(request, cancellationToken));
 });
 
 app.MapGet("/api/operations/licensing", async (
@@ -1483,4 +1507,9 @@ static async Task<IdentityUser?> FindUserByNameOrEmailAsync(UserManager<Identity
 
     return await userManager.FindByNameAsync(normalized)
         ?? await userManager.FindByEmailAsync(normalized);
+}
+
+static string ResolveOpenIddictParameter(OpenIddictRequest request, string parameterName)
+{
+    return request.GetParameter(parameterName).ToString()?.Trim() ?? string.Empty;
 }

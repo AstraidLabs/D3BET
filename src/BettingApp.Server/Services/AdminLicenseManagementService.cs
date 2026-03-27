@@ -17,6 +17,8 @@ public sealed class AdminLicenseManagementService(LicenseStore licenseStore)
                 var isExpiringSoon = !item.IsRevoked && item.ExpiresAtUtc <= now.AddDays(ExpiringSoonDays);
                 var statusLabel = item.IsRevoked
                     ? "Zablokovaná"
+                    : !item.IsConfirmed
+                        ? "Čeká na potvrzení"
                     : isExpiringSoon
                         ? "Brzy vyprší"
                         : "Aktivní";
@@ -27,6 +29,7 @@ public sealed class AdminLicenseManagementService(LicenseStore licenseStore)
                     item.CustomerName,
                     item.InstallationId,
                     item.IsRevoked,
+                    item.IsConfirmed,
                     isExpiringSoon,
                     item.IssuedAtUtc,
                     item.ExpiresAtUtc,
@@ -52,7 +55,8 @@ public sealed class AdminLicenseManagementService(LicenseStore licenseStore)
         return new LicenseAdminOverviewResponse(
             state.ServerInstanceId,
             licenses.Length,
-            licenses.Count(item => !item.IsRevoked),
+            licenses.Count(item => !item.IsRevoked && item.IsConfirmed),
+            licenses.Count(item => !item.IsRevoked && !item.IsConfirmed),
             licenses.Count(item => item.IsRevoked),
             licenses.Count(item => item.IsExpiringSoon),
             licenses,
@@ -83,7 +87,14 @@ public sealed class AdminLicenseManagementService(LicenseStore licenseStore)
             {
                 InstallationId = string.Empty,
                 MachineFingerprintHash = string.Empty,
-                LastValidatedAtUtc = null
+                LastValidatedAtUtc = null,
+                IsConfirmed = false,
+                ConfirmedAtUtc = null,
+                ClientPublicKey = null,
+                PendingConfirmationCode = null,
+                PendingActivatedAtUtc = null,
+                PendingChallengeNonce = null,
+                PendingChallengeExpiresAtUtc = null
             },
             item => $"Licence pro {item.Email} byla uvolněná pro nové zařízení.{FormatReason(reason)}",
             cancellationToken);
@@ -118,6 +129,16 @@ public sealed class AdminLicenseManagementService(LicenseStore licenseStore)
         var licenses = state.Licenses
             .Select(item => string.Equals(item.LicenseId, licenseId, StringComparison.Ordinal) ? updated : item)
             .ToArray();
+        var bootstrapSessions = (state.BootstrapSessions ?? [])
+            .Select(item => string.Equals(item.LicenseId, licenseId, StringComparison.Ordinal)
+                ? item with { IsRevoked = true }
+                : item)
+            .ToArray();
+        var bootstrapConfigurations = (state.BootstrapConfigurations ?? [])
+            .Select(item => string.Equals(item.LicenseId, licenseId, StringComparison.Ordinal)
+                ? item with { IsRevoked = true }
+                : item)
+            .ToArray();
 
         var auditEntries = AppendAudit(
             state.AuditEntries,
@@ -131,7 +152,7 @@ public sealed class AdminLicenseManagementService(LicenseStore licenseStore)
                 updated.InstallationId,
                 true));
 
-        await licenseStore.SaveAsync(new LicenseStoreState(state.ServerInstanceId, licenses, auditEntries), cancellationToken);
+        await licenseStore.SaveAsync(new LicenseStoreState(state.ServerInstanceId, licenses, bootstrapSessions, bootstrapConfigurations, auditEntries), cancellationToken);
         return await GetOverviewAsync(40, cancellationToken);
     }
 

@@ -199,7 +199,9 @@ public sealed class OperatorAuthService(
             {
                 ["grant_type"] = "refresh_token",
                 ["client_id"] = clientConfiguration.ClientId,
-                ["refresh_token"] = refreshToken
+                ["refresh_token"] = refreshToken,
+                ["d3bet_bootstrap_session_token"] = clientConfiguration.BootstrapSessionToken,
+                ["d3bet_bootstrap_config_id"] = clientConfiguration.ConfigId
             })
         };
 
@@ -243,7 +245,9 @@ public sealed class OperatorAuthService(
                 ["client_id"] = clientConfiguration.ClientId,
                 ["username"] = userName,
                 ["password"] = password,
-                ["scope"] = clientConfiguration.Scope
+                ["scope"] = clientConfiguration.Scope,
+                ["d3bet_bootstrap_session_token"] = clientConfiguration.BootstrapSessionToken,
+                ["d3bet_bootstrap_config_id"] = clientConfiguration.ConfigId
             })
         };
 
@@ -337,78 +341,38 @@ public sealed class OperatorAuthService(
 
     private async Task<OAuthClientConfiguration> GetOAuthClientConfigurationAsync(CancellationToken cancellationToken)
     {
-        if (resolvedClientConfiguration is not null)
+        if (resolvedClientConfiguration is not null &&
+            resolvedClientConfiguration.ExpiresAtUtc > DateTime.UtcNow.AddMinutes(1) &&
+            IsUsableOAuthConfiguration(resolvedClientConfiguration))
         {
             return resolvedClientConfiguration;
         }
 
-        try
+        var decrypted = await licenseService.GetClientConfigurationAsync(cancellationToken);
+        var configuration = new OAuthClientConfiguration
         {
-            var licenseToken = await licenseService.GetLicenseTokenAsync(cancellationToken);
-            var installationId = await licenseService.GetInstallationIdAsync(cancellationToken);
-            var fingerprint = licenseService.ComputeMachineFingerprint();
-
-            using var request = new HttpRequestMessage(HttpMethod.Get, $"{options.ServerBaseUrl.TrimEnd('/')}/api/auth/client-configuration");
-            request.Headers.Add("X-D3Bet-License", licenseToken);
-            request.Headers.Add("X-D3Bet-InstallationId", installationId);
-            request.Headers.Add("X-D3Bet-Fingerprint", fingerprint);
-            using var response = await httpClient.SendAsync(request, cancellationToken);
-            await PreLoginErrorTranslator.EnsureSuccessOrThrowFriendlyAsync(
-                response,
-                cancellationToken,
-                static (detail, statusCode) =>
-                {
-                    if (statusCode == System.Net.HttpStatusCode.BadRequest || statusCode == System.Net.HttpStatusCode.Unauthorized)
-                    {
-                        return "Nepodařilo se načíst zabezpečenou konfiguraci klienta. Zkontrolujte platnost licence a zkuste to znovu.";
-                    }
-
-                    return string.IsNullOrWhiteSpace(detail)
-                        ? "Server teď neposkytl konfiguraci pro přihlášení klienta."
-                        : detail;
-                });
-            var encrypted = await DeserializeAsync<EncryptedClientConfigurationResponse>(response, cancellationToken);
-            var decrypted = DecryptConfiguration(encrypted, licenseToken, installationId);
-            var configuration = new OAuthClientConfiguration
-            {
-                ClientId = decrypted.ClientId,
-                RedirectUri = decrypted.RedirectUri,
-                Scope = decrypted.Scope,
-                DisplayName = decrypted.DisplayName
-            };
-            resolvedClientConfiguration = configuration;
-            return configuration;
-        }
-        catch
+            ClientId = decrypted.ClientId,
+            RedirectUri = decrypted.RedirectUri,
+            Scope = decrypted.Scope,
+            DisplayName = decrypted.DisplayName,
+            ConfigId = decrypted.ConfigId,
+            BootstrapSessionToken = decrypted.BootstrapSessionToken,
+            ExpiresAtUtc = decrypted.ExpiresAtUtc
+        };
+        if (!IsUsableOAuthConfiguration(configuration))
         {
-            resolvedClientConfiguration = new OAuthClientConfiguration
-            {
-                ClientId = options.ClientId,
-                RedirectUri = options.RedirectUri,
-                Scope = options.Scope,
-                DisplayName = "D3Bet Operator Client"
-            };
-            return resolvedClientConfiguration;
+            throw new InvalidOperationException("Server vrátil neúplnou přihlašovací konfiguraci klienta.");
         }
+
+        resolvedClientConfiguration = configuration;
+        return configuration;
     }
 
-    private static DecryptedClientConfiguration DecryptConfiguration(
-        EncryptedClientConfigurationResponse encrypted,
-        string licenseToken,
-        string installationId)
-    {
-        var nonce = Convert.FromBase64String(encrypted.Nonce);
-        var cipher = Convert.FromBase64String(encrypted.CipherText);
-        var tag = Convert.FromBase64String(encrypted.Tag);
-        var material = $"D3BET-LICENSING-LOCAL-SECRET-V1|{licenseToken}|{installationId}|{Convert.ToBase64String(nonce)}";
-        var key = SHA256.HashData(Encoding.UTF8.GetBytes(material));
-        var plain = new byte[cipher.Length];
-
-        using var aes = new AesGcm(key, 16);
-        aes.Decrypt(nonce, cipher, tag, plain);
-        return JsonSerializer.Deserialize<DecryptedClientConfiguration>(plain, JsonOptions)
-            ?? throw new InvalidOperationException("Zašifrovaná konfigurace klienta je poškozená.");
-    }
+    private static bool IsUsableOAuthConfiguration(OAuthClientConfiguration configuration) =>
+        !string.IsNullOrWhiteSpace(configuration.ClientId) &&
+        !string.IsNullOrWhiteSpace(configuration.Scope) &&
+        !string.IsNullOrWhiteSpace(configuration.ConfigId) &&
+        !string.IsNullOrWhiteSpace(configuration.BootstrapSessionToken);
 
     private static async Task<T> DeserializeAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
     {
@@ -447,5 +411,11 @@ public sealed class OperatorAuthService(
         public string Scope { get; set; } = string.Empty;
 
         public string DisplayName { get; set; } = string.Empty;
+
+        public string ConfigId { get; set; } = string.Empty;
+
+        public string BootstrapSessionToken { get; set; } = string.Empty;
+
+        public DateTime ExpiresAtUtc { get; set; }
     }
 }

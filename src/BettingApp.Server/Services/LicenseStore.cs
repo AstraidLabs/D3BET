@@ -58,6 +58,8 @@ public sealed class LicenseStore
 public sealed record LicenseStoreState(
     string ServerInstanceId,
     IReadOnlyList<LicenseBindingRecord> Licenses,
+    IReadOnlyList<BootstrapSessionRecord>? BootstrapSessions = null,
+    IReadOnlyList<BootstrapConfigurationRecord>? BootstrapConfigurations = null,
     IReadOnlyList<LicenseAuditEntryRecord>? AuditEntries = null);
 
 public sealed record LicenseBindingRecord(
@@ -70,7 +72,14 @@ public sealed record LicenseBindingRecord(
     DateTime IssuedAtUtc,
     DateTime ExpiresAtUtc,
     bool IsRevoked,
-    DateTime? LastValidatedAtUtc = null);
+    DateTime? LastValidatedAtUtc = null,
+    bool IsConfirmed = false,
+    string? PendingConfirmationCode = null,
+    DateTime? PendingActivatedAtUtc = null,
+    DateTime? ConfirmedAtUtc = null,
+    string? ClientPublicKey = null,
+    string? PendingChallengeNonce = null,
+    DateTime? PendingChallengeExpiresAtUtc = null);
 
 public sealed record LicenseAuditEntryRecord(
     Guid Id,
@@ -81,3 +90,25 @@ public sealed record LicenseAuditEntryRecord(
     string Email,
     string InstallationId,
     bool IsSuccessful);
+
+public sealed record BootstrapSessionRecord(
+    string SessionId,
+    string SessionTokenHash,
+    string LicenseId,
+    string InstallationId,
+    DateTime IssuedAtUtc,
+    DateTime ExpiresAtUtc,
+    bool IsRevoked,
+    int ConfigurationVersion,
+    DateTime? LastUsedAtUtc = null);
+
+public sealed record BootstrapConfigurationRecord(
+    string ConfigId,
+    string LicenseId,
+    string InstallationId,
+    string SessionId,
+    DateTime IssuedAtUtc,
+    DateTime ExpiresAtUtc,
+    bool IsRevoked,
+    int ConfigurationVersion,
+    DateTime? LastUsedAtUtc = null);
